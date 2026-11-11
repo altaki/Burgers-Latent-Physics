@@ -43,8 +43,11 @@ LOGS_DIR = REPO_ROOT / "outputs" / "logs"
 
 
 def _load_run(run_dir: Path, window_size: int, protocol: str):
-    metrics_name = f"metrics_window_a_{run_dir.name.removeprefix('window_')}.json"
-    metrics = json.load(open(run_dir / metrics_name))
+    # le nom du fichier de métriques ne contient PAS la graine (run_suffix = w{w}_{proto}[_z{mode}])
+    metrics_candidates = sorted(run_dir.glob("metrics_window_a_*.json"))
+    if not metrics_candidates:
+        raise FileNotFoundError(f"pas de metrics_window_a_*.json dans {run_dir}")
+    metrics = json.load(open(metrics_candidates[0]))
     cfg = dict(metrics["model_config"])
     cfg.pop("model", None)
     cfg.pop("loss", None)
@@ -102,6 +105,11 @@ def analyze_run(run_dir: Path, window_size: int, protocol: str, verbose: bool = 
 
     h_te, z_te = p_te["h"], p_te["z"]
     h_tr, z_tr = p_tr["h"], p_tr["z"]
+    # z en unités PHYSIQUES si le run a standardisé la cible z (modes A-Physics)
+    z_std = json.load(open(run_dir / "standardizers.json")).get("z_target_standardizer")
+    if z_std:
+        z_te = z_te * float(z_std["std"]) + float(z_std["mean"])
+        z_tr = z_tr * float(z_std["std"]) + float(z_std["mean"])
     nuD_te = np.asarray(p_te["meta"]["nu_dissipation_t"], float)
     nuD_tr = np.asarray(p_tr["meta"]["nu_dissipation_t"], float)
     nu_te = np.asarray(p_te["meta"]["nu"], float)

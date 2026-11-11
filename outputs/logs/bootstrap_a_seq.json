@@ -1,0 +1,206 @@
+{
+  "nu": 0.01,
+  "n_boot": 2000,
+  "runs": {
+    "window_w25_heldout_nu_zenergy_centered_s42": {
+      "file": "outputs/models/latent_dynamics_autoencoder_seq/window_w25_heldout_nu_zenergy_centered_s42/predictions_test.npz",
+      "run_name": "w25_heldout_nu_zenergy_centered_s42",
+      "protocol": "heldout_nu",
+      "window_size": 25,
+      "z_target_mode": "energy_centered",
+      "seed": 42,
+      "source": "?",
+      "nu": 0.01,
+      "n_windows": 3800,
+      "n_trajectories": 50,
+      "n_boot": 2000,
+      "point": {
+        "n": 3800,
+        "spearman": 0.9655475063177409,
+        "pearson": 0.9436487085122427,
+        "r2": 0.8588680100806619,
+        "rel_rmse": 0.5367434652993746,
+        "calibration_slope": 0.9616489731193005
+      },
+      "bootstrap_ci95": {
+        "spearman": {
+          "mean": 0.9539087143398166,
+          "p2.5": 0.8939842048324753,
+          "p97.5": 0.9789200670983426
+        },
+        "pearson": {
+          "mean": 0.9459493803512182,
+          "p2.5": 0.9067949044924883,
+          "p97.5": 0.9709786985604576
+        },
+        "r2": {
+          "mean": 0.8454166795653059,
+          "p2.5": 0.6713273413557607,
+          "p97.5": 0.924259463186911
+        },
+        "rel_rmse": {
+          "mean": 0.5449094852045484,
+          "p2.5": 0.36802147306191946,
+          "p97.5": 0.7954231750198385
+        },
+        "calibration_slope": {
+          "mean": 0.9761794974334888,
+          "p2.5": 0.8166629271786179,
+          "p97.5": 1.146713033185998
+        }
+      }
+    },
+    "window_w25_heldout_nu_zenergy_centered_s7": {
+      "file": "outputs/models/latent_dynamics_autoencoder_seq/window_w25_heldout_nu_zenergy_centered_s7/predictions_test.npz",
+      "run_name": "w25_heldout_nu_zenergy_centered_s7",
+      "protocol": "heldout_nu",
+      "window_size": 25,
+      "z_target_mode": "energy_centered",
+      "seed": 7,
+      "source": "?",
+      "nu": 0.01,
+      "n_windows": 3800,
+      "n_trajectories": 50,
+      "n_boot": 2000,
+      "point": {
+        "n": 3800,
+        "spearman": 0.9683339443102855,
+        "pearson": 0.9167951083351076,
+        "r2": 0.7914761207482328,
+        "rel_rmse": 0.6524270082788541,
+        "calibration_slope": 0.9622749476314572
+      },
+      "bootstrap_ci95": {
+        "spearman": {
+          "mean": 0.9591935200576409,
+          "p2.5": 0.9174093871995639,
+          "p97.5": 0.9797525255717063
+        },
+        "pearson": {
+          "mean": 0.9211983552240306,
+          "p2.5": 0.8567906477052661,
+          "p97.5": 0.962695162989147
+        },
+        "r2": {
+          "mean": 0.7769725846136956,
+          "p2.5": 0.5831397580815533,
+          "p97.5": 0.8895319678507906
+        },
+        "rel_rmse": {
+          "mean": 0.6573151271039346,
+          "p2.5": 0.454005436188466,
+          "p97.5": 0.9080049688829829
+        },
+        "calibration_slope": {
+          "mean": 0.9794383416572525,
+          "p2.5": 0.741398974662069,
+          "p97.5": 1.2115262274489726
+        }
+      }
+    },
+    "window_w25_heldout_nu_zenergy_centered_s123": {
+      "file": "outputs/models/latent_dynamics_autoencoder_seq/window_w25_heldout_nu_zenergy_centered_s123/predictions_test.npz",
+      "run_name": "w25_heldout_nu_zenergy_centered_s123",
+      "protocol": "heldout_nu",
+      "window_size": 25,
+      "z_target_mode": "energy_centered",
+      "seed": 123,
+      "source": "?",
+      "nu": 0.01,
+      "n_windows": 3800,
+      "n_trajectories": 50,
+      "n_boot": 2000,
+      "point": {
+        "n": 3800,
+        "spearman": 0.9610986598618876,
+        "pearson": 0.9426540864420566,
+        "r2": 0.8810689996677405,
+        "rel_rmse": 0.49272156341450596,
+        "calibration_slope": 0.8669735383843882
+      },
+      "bootstrap_ci95": {
+        "spearman": {
+          "mean": 0.9486720766908029,
+          "p2.5": 0.8879354503833812,
+          "p97.5": 0.9740485744933219
+        },
+        "pearson": {
+          "mean": 0.9441021389162337,
+          "p2.5": 0.9122002580889477,
+          "p97.5": 0.967389739223307
+        },
+        "r2": {
+          "mean": 0.8744126915724428,
+          "p2.5": 0.7891366480116211,
+          "p97.5": 0.9284252716532677
+        },
+        "rel_rmse": {
+          "mean": 0.4966418145442064,
+          "p2.5": 0.3640034857245738,
+          "p97.5": 0.6724927415209153
+        },
+        "calibration_slope": {
+          "mean": 0.8761894321194533,
+          "p2.5": 0.7549150586685616,
+          "p97.5": 1.0161761381037073
+        }
+      }
+    }
+  },
+  "inter_seed": {
+    "?|25|heldout_nu|energy_centered": {
+      "members": [
+        "w25_heldout_nu_zenergy_centered_s42",
+        "w25_heldout_nu_zenergy_centered_s7",
+        "w25_heldout_nu_zenergy_centered_s123"
+      ],
+      "per_seed": {
+        "spearman": {
+          "n_seeds": 3,
+          "mean": 0.9649933701633047,
+          "std": 0.003649333558411356,
+          "ci95": [
+            0.9559271913692281,
+            0.9740595489573812
+          ]
+        },
+        "pearson": {
+          "n_seeds": 3,
+          "mean": 0.9343659677631356,
+          "std": 0.015224934943876346,
+          "ci95": [
+            0.8965420801628322,
+            0.972189855363439
+          ]
+        },
+        "r2": {
+          "n_seeds": 3,
+          "mean": 0.8438043768322118,
+          "std": 0.04665732282562142,
+          "ci95": [
+            0.7278918070384615,
+            0.9597169466259621
+          ]
+        },
+        "rel_rmse": {
+          "n_seeds": 3,
+          "mean": 0.5606306789975782,
+          "std": 0.08248882659807676,
+          "ci95": [
+            0.3557005353202489,
+            0.7655608226749075
+          ]
+        },
+        "calibration_slope": {
+          "n_seeds": 3,
+          "mean": 0.9302991530450487,
+          "std": 0.0548424841262256,
+          "ci95": [
+            0.7940518742909211,
+            1.0665464317991764
+          ]
+        }
+      }
+    }
+  }
+}
