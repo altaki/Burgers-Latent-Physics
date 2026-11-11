@@ -1,0 +1,295 @@
+{
+  "nu": 0.01,
+  "n_boot": 2000,
+  "runs": {
+    "window_w25_heldout_nu": {
+      "file": "outputs/models/latent_dynamics_autoencoder_seq/window_w25_heldout_nu/predictions_test.npz",
+      "run_name": "window_w25_heldout_nu",
+      "protocol": "heldout_nu",
+      "window_size": 25,
+      "z_target_mode": "none",
+      "seed": 42,
+      "source": "window_a",
+      "nu": 0.01,
+      "n_windows": 3800,
+      "n_trajectories": 50,
+      "n_boot": 2000,
+      "point": {
+        "n": 3800,
+        "spearman": 0.24923569605875903,
+        "pearson": 0.3020770170736849,
+        "r2": -0.3745600467579211,
+        "rel_rmse": 1.6750813042850043,
+        "calibration_slope": 5.943911748274156e-07
+      },
+      "bootstrap_ci95": {
+        "spearman": {
+          "mean": 0.2353359677178955,
+          "p2.5": -0.1740237812817097,
+          "p97.5": 0.5824861365080526
+        },
+        "pearson": {
+          "mean": 0.3083813067557473,
+          "p2.5": -0.0647078856042823,
+          "p97.5": 0.5995366894119061
+        },
+        "r2": {
+          "mean": -0.39873341962895004,
+          "p2.5": -0.7112743664674158,
+          "p97.5": -0.17079031245783116
+        },
+        "rel_rmse": {
+          "mean": 1.673079934032349,
+          "p2.5": 1.3941516999543249,
+          "p97.5": 2.0732826113122367
+        },
+        "calibration_slope": {
+          "mean": 6.506080284652501e-07,
+          "p2.5": -1.1073653513676414e-07,
+          "p97.5": 1.4880188987976883e-06
+        }
+      }
+    },
+    "window_w25_standard": {
+      "file": "outputs/models/latent_dynamics_autoencoder_seq/window_w25_standard/predictions_test.npz",
+      "run_name": "window_w25_standard",
+      "protocol": "standard",
+      "window_size": 25,
+      "z_target_mode": "none",
+      "seed": 42,
+      "source": "window_a",
+      "nu": 0.01,
+      "n_windows": 3800,
+      "n_trajectories": 50,
+      "n_boot": 2000,
+      "point": {
+        "n": 3800,
+        "spearman": 0.40194105646119177,
+        "pearson": 0.1900943726860001,
+        "r2": -0.3745636856061245,
+        "rel_rmse": 1.6750835214899111,
+        "calibration_slope": 7.60679549641115e-08
+      },
+      "bootstrap_ci95": {
+        "spearman": {
+          "mean": 0.39233675435400095,
+          "p2.5": -0.06392430764098996,
+          "p97.5": 0.7111192263381062
+        },
+        "pearson": {
+          "mean": 0.20139704214041768,
+          "p2.5": -0.2556915708179583,
+          "p97.5": 0.6206180809770913
+        },
+        "r2": {
+          "mean": -0.39873735621314,
+          "p2.5": -0.7112818445842214,
+          "p97.5": -0.17079424572778304
+        },
+        "rel_rmse": {
+          "mean": 1.6730822711311493,
+          "p2.5": 1.3941536129043364,
+          "p97.5": 2.0732846106378764
+        },
+        "calibration_slope": {
+          "mean": 8.672388914779744e-08,
+          "p2.5": -9.328128927681237e-08,
+          "p97.5": 2.6120759328632053e-07
+        }
+      }
+    },
+    "window_w50_heldout_nu": {
+      "file": "outputs/models/latent_dynamics_autoencoder_seq/window_w50_heldout_nu/predictions_test.npz",
+      "run_name": "window_w50_heldout_nu",
+      "protocol": "heldout_nu",
+      "window_size": 50,
+      "z_target_mode": "none",
+      "seed": 42,
+      "source": "window_a",
+      "nu": 0.01,
+      "n_windows": 2550,
+      "n_trajectories": 50,
+      "n_boot": 2000,
+      "point": {
+        "n": 2550,
+        "spearman": -0.03455484578122836,
+        "pearson": -0.01282577113001708,
+        "r2": -4.958779737650709,
+        "rel_rmse": 2.9706763438841377,
+        "calibration_slope": -1.3312169562572192e-07
+      },
+      "bootstrap_ci95": {
+        "spearman": {
+          "mean": -0.03659494197036693,
+          "p2.5": -0.44392833134518184,
+          "p97.5": 0.3684812170377051
+        },
+        "pearson": {
+          "mean": -0.01959215482108032,
+          "p2.5": -0.4061449308798462,
+          "p97.5": 0.3894723211422988
+        },
+        "r2": {
+          "mean": -5.684148250164116,
+          "p2.5": -9.145411999417796,
+          "p97.5": -3.3619631588474945
+        },
+        "rel_rmse": {
+          "mean": 3.087922960237007,
+          "p2.5": 2.3464152842053325,
+          "p97.5": 4.273077605458757
+        },
+        "calibration_slope": {
+          "mean": -2.2125262726269033e-08,
+          "p2.5": -4.178508700917332e-06,
+          "p97.5": 4.917764804031482e-06
+        }
+      }
+    },
+    "window_w50_standard": {
+      "file": "outputs/models/latent_dynamics_autoencoder_seq/window_w50_standard/predictions_test.npz",
+      "run_name": "window_w50_standard",
+      "protocol": "standard",
+      "window_size": 50,
+      "z_target_mode": "none",
+      "seed": 42,
+      "source": "window_a",
+      "nu": 0.01,
+      "n_windows": 2550,
+      "n_trajectories": 50,
+      "n_boot": 2000,
+      "point": {
+        "n": 2550,
+        "spearman": 0.6144778094673141,
+        "pearson": 0.6057623770994887,
+        "r2": -4.958738917562449,
+        "rel_rmse": 2.970666168690259,
+        "calibration_slope": 7.227795388263885e-06
+      },
+      "bootstrap_ci95": {
+        "spearman": {
+          "mean": 0.6007384104439325,
+          "p2.5": 0.24225346780416038,
+          "p97.5": 0.8127827970022551
+        },
+        "pearson": {
+          "mean": 0.606291429394432,
+          "p2.5": 0.29769571887903884,
+          "p97.5": 0.7908157663490136
+        },
+        "r2": {
+          "mean": -5.684103694020819,
+          "p2.5": -9.145435456147984,
+          "p97.5": -3.3619498862385524
+        },
+        "rel_rmse": {
+          "mean": 3.0879126793444573,
+          "p2.5": 2.346412591239586,
+          "p97.5": 4.273064194875587
+        },
+        "calibration_slope": {
+          "mean": 7.3756136530257596e-06,
+          "p2.5": 3.393968574761187e-06,
+          "p97.5": 1.1275503051550385e-05
+        }
+      }
+    },
+    "c3_window_w25_heldout_nu": {
+      "file": "outputs/models/experiment_c/c3_window_w25_heldout_nu/predictions_test.npz",
+      "run_name": "c3_window_w25_heldout_nu",
+      "protocol": "heldout_nu",
+      "window_size": 25,
+      "z_target_mode": "supervised",
+      "seed": 42,
+      "source": "experiment_c",
+      "nu": 0.01,
+      "n_windows": 3850,
+      "n_trajectories": 50,
+      "n_boot": 2000,
+      "point": {
+        "n": 3850,
+        "spearman": 0.9730036258317881,
+        "pearson": 0.8949610761302325,
+        "r2": 0.6898522381656456,
+        "rel_rmse": 0.7949506879459424,
+        "calibration_slope": 0.9037537945651705
+      },
+      "bootstrap_ci95": {
+        "spearman": {
+          "mean": 0.9657089156882152,
+          "p2.5": 0.9223521265797241,
+          "p97.5": 0.9862351101832523
+        },
+        "pearson": {
+          "mean": 0.8983550391344297,
+          "p2.5": 0.8299305383651634,
+          "p97.5": 0.9433582566879871
+        },
+        "r2": {
+          "mean": 0.6483830831788926,
+          "p2.5": 0.2729834663305534,
+          "p97.5": 0.82668729065646
+        },
+        "rel_rmse": {
+          "mean": 0.8220293155864272,
+          "p2.5": 0.564511156605963,
+          "p97.5": 1.166213040070308
+        },
+        "calibration_slope": {
+          "mean": 0.9262106700169243,
+          "p2.5": 0.7138444704325042,
+          "p97.5": 1.1418889263805039
+        }
+      }
+    },
+    "c3_window_w50_heldout_nu": {
+      "file": "outputs/models/experiment_c/c3_window_w50_heldout_nu/predictions_test.npz",
+      "run_name": "c3_window_w50_heldout_nu",
+      "protocol": "heldout_nu",
+      "window_size": 50,
+      "z_target_mode": "supervised",
+      "seed": 42,
+      "source": "experiment_c",
+      "nu": 0.01,
+      "n_windows": 2600,
+      "n_trajectories": 50,
+      "n_boot": 2000,
+      "point": {
+        "n": 2600,
+        "spearman": 0.977555011927801,
+        "pearson": 0.9088575112941704,
+        "r2": 0.6855213211176198,
+        "rel_rmse": 0.6826514443795657,
+        "calibration_slope": 0.9578559717493454
+      },
+      "bootstrap_ci95": {
+        "spearman": {
+          "mean": 0.9712999036916401,
+          "p2.5": 0.9290955522392474,
+          "p97.5": 0.988620018396455
+        },
+        "pearson": {
+          "mean": 0.9177135043128871,
+          "p2.5": 0.85609137984961,
+          "p97.5": 0.9574675371967295
+        },
+        "r2": {
+          "mean": 0.6388329487392841,
+          "p2.5": 0.18470607997907426,
+          "p97.5": 0.8502184496769687
+        },
+        "rel_rmse": {
+          "mean": 0.7006844715329751,
+          "p2.5": 0.45772526532347696,
+          "p97.5": 1.0539724184097596
+        },
+        "calibration_slope": {
+          "mean": 0.992311663984148,
+          "p2.5": 0.766772466581395,
+          "p97.5": 1.253707080470428
+        }
+      }
+    }
+  },
+  "inter_seed": {}
+}

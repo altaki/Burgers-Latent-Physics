@@ -471,7 +471,7 @@ def predict_a_seq(
 
     z_parts, h_parts, rec_parts, u_parts = [], [], [], []
     meta_keys = ("nu", "time_t", "trajectory_index", "time_index_t", "energy0",
-                 "nu_dissipation_t", "nuD_est_t", "energy_t", "dissipation_t")
+                 "nu_dissipation_t", "nuD_est_t", "energy_t", "dissipation_t", "ic_type_id")
     metas: Dict[str, List[np.ndarray]] = {k: [] for k in meta_keys}
 
     for batch in loader:
@@ -491,6 +491,117 @@ def predict_a_seq(
         "u": np.concatenate(u_parts, axis=0),
         "meta": {key: np.concatenate(vals, axis=0) for key, vals in metas.items()},
     }
+
+
+# =============================================================================
+# 5b. Sauvegarde des prédictions par fenêtre (format standard, tous modes)
+# =============================================================================
+
+def _subset_metrics(pred: np.ndarray, targ: np.ndarray) -> Dict[str, Any]:
+    """Métriques de régression (spearman, pearson, R², rel_rmse, pente) en numpy/pandas."""
+    pred = np.asarray(pred, dtype=float).reshape(-1)
+    targ = np.asarray(targ, dtype=float).reshape(-1)
+    if len(targ) < 2:
+        return {"n": int(len(targ))}
+    rx = pd.Series(pred).rank().to_numpy()
+    ry = pd.Series(targ).rank().to_numpy()
+    spearman = float(np.corrcoef(rx, ry)[0, 1])
+    pearson = float(np.corrcoef(pred, targ)[0, 1])
+    ss_res = float(np.sum((pred - targ) ** 2))
+    ss_tot = float(np.sum((targ - targ.mean()) ** 2))
+    r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else float("nan")
+    rel_rmse = float(np.sqrt(np.mean((pred - targ) ** 2)) / np.mean(np.abs(targ)))
+    slope = float(np.polyfit(targ, pred, 1)[0])
+    return {
+        "n": int(len(targ)),
+        "spearman": spearman,
+        "pearson": pearson,
+        "r2": r2,
+        "rel_rmse": rel_rmse,
+        "calibration_slope": slope,
+    }
+
+
+def range_stratified_metrics(
+    z: np.ndarray,
+    meta: Dict[str, np.ndarray],
+    nuD_train_max: float,
+    nu_value: float = 0.01,
+) -> Dict[str, Any]:
+    """Métriques z vs nu*D sur la strate nu=nu_value, stratifiées selon que nuD
+    tombe dans la plage vue à l'entraînement (<= nuD_train_max) ou hors plage."""
+    z = np.asarray(z, dtype=float).reshape(-1)
+    nu = np.asarray(meta["nu"], dtype=float).reshape(-1)
+    nd = np.asarray(meta["nu_dissipation_t"], dtype=float).reshape(-1)
+    m = np.isclose(nu, nu_value)
+    in_range = m & (nd <= nuD_train_max)
+    out_range = m & (nd > nuD_train_max)
+    return {
+        "nu": float(nu_value),
+        "nuD_train_max": float(nuD_train_max),
+        "global": _subset_metrics(z[m], nd[m]),
+        "in_range": _subset_metrics(z[in_range], nd[in_range]),
+        "out_of_range": _subset_metrics(z[out_range], nd[out_range]),
+        "frac_out_of_range": float(out_range.sum() / max(int(m.sum()), 1)),
+    }
+
+
+def save_predictions_npz(
+    path: str | Path,
+    *,
+    z: np.ndarray,
+    h: np.ndarray,
+    meta: Dict[str, np.ndarray],
+    u: Optional[np.ndarray] = None,
+    dx: Optional[float] = None,
+    split: str,
+    protocol: str,
+    seed: int,
+    window_size: int,
+    z_target_mode: str,
+    run_name: str,
+    extra: Optional[Dict[str, Any]] = None,
+) -> Path:
+    """Sauvegarde les prédictions par fenêtre dans un npz au format standard.
+
+    Champs : z (unités physiques), h, ic_type_id, E, D, max_abs_ux, nu, time_t,
+    trajectory_index, time_index_t, energy0, nu_dissipation_t, nuD_est_t +
+    scalaires (split, protocol, seed, window_size, z_target_mode, run_name).
+    Écrit pour TOUS les modes, y compris z_target_mode="none".
+    """
+    path = Path(path)
+    z = np.asarray(z, dtype=float).reshape(-1)
+    n = len(z)
+    if u is not None and dx is not None:
+        max_abs_ux = np.abs(np.gradient(np.asarray(u, dtype=float), float(dx), axis=1)).max(axis=1)
+    else:
+        max_abs_ux = np.full(n, np.nan)
+    ic = meta.get("ic_type_id")
+    data: Dict[str, Any] = {
+        "z": z,
+        "h": np.asarray(h, dtype=float),
+        "ic_type_id": np.asarray(ic if ic is not None else np.full(n, -1), dtype=np.int64),
+        "E": np.asarray(meta["energy_t"], dtype=float),
+        "D": np.asarray(meta["dissipation_t"], dtype=float),
+        "max_abs_ux": np.asarray(max_abs_ux, dtype=float),
+        "nu": np.asarray(meta["nu"], dtype=float),
+        "time_t": np.asarray(meta["time_t"], dtype=float),
+        "trajectory_index": np.asarray(meta["trajectory_index"], dtype=np.int64),
+        "time_index_t": np.asarray(meta["time_index_t"], dtype=np.int64),
+        "energy0": np.asarray(meta["energy0"], dtype=float),
+        "nu_dissipation_t": np.asarray(meta["nu_dissipation_t"], dtype=float),
+        "nuD_est_t": np.asarray(meta["nuD_est_t"], dtype=float),
+        "split": np.array(str(split)),
+        "protocol": np.array(str(protocol)),
+        "seed": np.array(int(seed)),
+        "window_size": np.array(int(window_size)),
+        "z_target_mode": np.array(str(z_target_mode)),
+        "run_name": np.array(str(run_name)),
+    }
+    if extra:
+        data.update(extra)
+    np.savez(path, **data)
+    return path
 
 
 # =============================================================================
@@ -855,6 +966,11 @@ def train_and_evaluate_a_seq(
         train_ds, meta, e0_quartile_edges, eval_times, protocol
     )
 
+    # stratification de la strate nu=0.01 selon la plage de nuD vue à l'entraînement
+    # (population exacte des paires train du protocole courant)
+    nuD_train_max = float(max(train_ds.nu_dissipation[i, t] for (i, t) in train_ds.index_map))
+    range_strat = range_stratified_metrics(z, meta, nuD_train_max, nu_value=0.01)
+
     # 5) sauvegarde
     results: Dict[str, Any] = {
         "experiment": "experiment_a_seq",
@@ -878,6 +994,7 @@ def train_and_evaluate_a_seq(
         "e0_quartile_edges": e0_quartile_edges.tolist(),
         "metrics": nested,
         "baselines": baselines,
+        "nuD_range_stratification": range_strat,
     }
 
     # suffixe de run : "w{w}_{protocol}" (+ "_z{mode}" si terme physique actif)
@@ -895,6 +1012,16 @@ def train_and_evaluate_a_seq(
             "input_standardizer": bundle["input_standardizer"].to_dict(),
             "z_target_standardizer": z_target_standardizer,
         },
+    )
+    # prédictions par fenêtre (tous modes, y compris z_target_mode="none") :
+    # z en unités physiques, pour bootstrap a posteriori par trajectoire
+    save_predictions_npz(
+        output_dir / "predictions_test.npz",
+        z=z, h=h, meta=meta, u=u, dx=train_ds.dx,
+        split="test", protocol=protocol, seed=seed,
+        window_size=window_size, z_target_mode=z_target_mode,
+        run_name=f"{run_suffix}_s{seed}",
+        extra={"checkpoint_path": np.array(str(train_result["best_model_path"]))},
     )
 
     if verbose:

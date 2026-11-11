@@ -565,6 +565,9 @@ class NuSweepWindowPairDataset(Dataset):
         else:
             self.standardizer = standardizer
 
+        self.ic_type_ids = (
+            np.asarray(dataset["ic_type_ids"], dtype=np.int64) if "ic_type_ids" in dataset else None
+        )
         self.nu_filter = None if nu_filter is None else tuple(float(v) for v in nu_filter)
         self.nu_mask = _build_nu_mask(self.nu_values, self.nu_filter)
         # paires (i, t) : fenêtre [t-w+1, t] et fenêtre suivante [t-w+1+stride, t+stride]
@@ -603,6 +606,7 @@ class NuSweepWindowPairDataset(Dataset):
             item["dissipation_t"] = float(self.dissipation[traj_idx, time_idx])
             item["nu_dissipation_t"] = float(self.nu_dissipation[traj_idx, time_idx])
             item["energy0"] = float(self.energy0[traj_idx])
+            item["ic_type_id"] = int(self.ic_type_ids[traj_idx]) if self.ic_type_ids is not None else -1
             # νD estimé par différence centrée de l'énergie (identité dE/dt = -νD) :
             # (E_{t-1} - E_{t+1}) / (2*dt) ; repli décentré au bord.
             if time_idx >= 1:

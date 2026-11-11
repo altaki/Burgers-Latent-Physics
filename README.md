@@ -253,11 +253,13 @@ Goal: make physical observables identifiable by breaking the ν and E(0) degener
 
 - ν per trajectory, stratified uniform over {0.01, 0.05, 0.20}
 - target L2 norm ~ log-uniform(0.5, 2.0) per trajectory → E(0) = ½·norm² ∈ [0.125, 2.0]
-- `zero_mean=True` kept for fourier / random_smooth (made explicit in config); gaussian_bumps
-  unchanged (no zero_mean parameter → keeps the conserved-mass control on that subpopulation)
+- `zero_mean=True` applied to **ALL** IC families — measured on the npz: max|mass0| = 3.49e-15
+  including gaussian_bumps (the legacy "conserved-mass control" subpopulation no longer exists)
 - IC families unchanged: fourier (max_mode=3), gaussian_bumps (n_bumps=2), random_smooth
   (spectral_decay=3.0)
-- solver unchanged: L = 2π, RK4, dt = 2e-4, T = 2.0, save_every = 100 → 101 snapshots, Δt = 0.02
+- solver: L = 2π, RK4, dt = 2e-4, T = 2.0, save_every = 100 → 101 snapshots, Δt = 0.02,
+  **Nx = 1024** (measured `states.shape[2]`; the legacy spec said Nx=128 / save_every=200 —
+  the nu_sweep_v1 npz is the ground truth)
 - splits 600/150/150, stratified 200/50/50 per ν, IC families dealt round-robin within each ν stratum
 - PILOT GATE for ν = 0.01: 20 trajectories per ν at Nx = 128; pass if ≥ 95% of ν = 0.01
   trajectories have energy_monotone_fraction ≥ 0.99, zero NaN, max|u| ≤ 5, |dE/dt + νD| rel. err
@@ -501,11 +503,15 @@ lecture seule) :
    s'améliore de w=5 à w=25 — le modèle utilise donc des différences *locales* dans la
    fenêtre, pas la moyenne ; c'est pourquoi la cible centrée (et non la moyenne) a été
    retenue pour A-Physics.
-4. **Les verdicts formels « NOT IDENTIFIABLE (threshold artifact) » de C2** bloquaient sur des
-   seuils calibrés dans un autre régime (rel_rmse_fail = 0.5 absolu, inatteignable à ν=0.01 où
-   même l'oracle ν vaut 1.54). Substantiellement, νD est identifiable à ν held-out dès w ≥ 25
-   via le canal énergie. Le même problème de seuils a été traité au Step 6 (verdict v2 :
-   critère de monotonie non applicable car νD n'est pas monotone à faible ν).
+4. **Les verdicts formels « NOT IDENTIFIABLE » de C2** bloquaient sur rel_rmse_fail = 0.5 absolu,
+   un seuil calibré dans un autre régime (à ν=0.01 même l'oracle ν vaut 1.54). Ce seuil n'est
+   **pas** inatteignable en principe : la baseline backward à 2 points atteint R² = 0.9995 et
+   rel_rmse = 0.033 à ν=0.01 (mesuré, `main_analytic_nuD_baseline.py`). L'échec à w=5 est donc
+   un problème d'**apprenabilité** (le modèle entraîné n'extrait pas le canal pente d'énergie,
+   item 2), pas un déficit d'information ni un artefact de seuil. Le traitement des seuils
+   reste documenté au Step 6 (verdict v2 : critère de monotonie non applicable car νD n'est
+   pas monotone à faible ν). Substantiellement, νD est identifiable à ν held-out dès w ≥ 25
+   via le canal énergie.
 5. **Pont Steps 4/C2 → 5 → 6** : window-A a échoué (r_holdout 0.249) précisément parce que la
    loss A ne sélectionne pas le canal pente d'énergie (sonde linéaire sur h : 0.655, donc
    partiellement présent) ; A-Physics l'injecte explicitement (L_z = MSE(z, νD_est)) avec un
@@ -672,7 +678,7 @@ complex. No single dim carries νD at held-out ν (|ρ| ≤ 0.57).
 5. **ν-conditioned models / finer ν sweep near 0.01**: dataset-level options if a residual
    held-out gap remains after 2–3.
 
-## Step 6 — Experiment A-Physics (implemented, run pending)
+## Step 6 — Experiment A-Physics (implemented, pré-enregistré — voir `PREREGISTRATION_experiment_a_physics_v1.md`, runs pending)
 
 Motivation (Step 5 audit): νD is present in h (linear probe 0.55–0.78 @ν=0.01 held-out)
 but the scalar z does not select it — the problem is the z-objective. A-Physics anchors z
@@ -705,8 +711,12 @@ on the exact energy identity **dE/dt = −νD** via an auxiliary loss
   discovery. Measured: centered estimate vs stored νD → rel err median 1.3e-4, p95 3.5e-3,
   Spearman 0.999999 — so `energy_centered` and `supervised` targets are numerically almost
   identical; `asup` is kept only as a 1-seed control, not as an independent experiment.
-- **Temporal alignment**: z_t is computed from window [t−w+1, t] only; the target uses E_{t+1}
-  (outside the window) but it is a *training target*, not an input — no leakage at inference.
+- **Temporal alignment**: z_t is computed from window [t−w+1, t] only. The target uses E_{t+1},
+  which comes from the **second window of the pair** (`window_tp`, last snapshot) — fed to the
+  model only as a prediction *target*, never as encoder input, so no leakage at inference.
+  **L_z applies to z_t only, never to z_tp** (`ml_losses.py:500-501`), hence no border case at
+  t+1 = 100: `index_map` gives t ∈ [w−1, n_times−stride−1], so t+1 ≤ 100 is always valid (and the
+  t==0 fallback branch of `nuD_est_t` is dead code for w ≥ 2).
   The causal in-window alternative (E_{t−w+1}−E_t)/((w−1)dt) is far worse: rel err median
   0.14 (w=25) / 0.27 (w=50) vs 1.3e-4 centered; R² @ν=0.01: 0.78 / 0.50 vs 0.9999. Centered kept.
 - **Analytic baseline (no network)**, `main_analytic_nuD_baseline.py` →
@@ -725,13 +735,41 @@ on the exact energy identity **dE/dt = −νD** via an auxiliary loss
   run dirs `window_w{w}_{protocole}[_z{mode}]_s{seed}/`; summaries
   `experiment_a_seq_summary_{tag}_s{seed}.json` (one per tag+seed — no more overwrite);
   `main_analyze_window_a_latents.py` auto-discovers all `window_w*` runs.
-- **Runs**: `aphys` (energy_centered, λ_z=1, λ_mono=0.1) on **3 seeds** (42, 7, 123);
-  `asup` (supervised) on 1 seed as redundancy control; optional `aphys_mono0` (λ_mono=0)
-  on 1 seed to isolate the hinge's residual effect. w=25 only (C2: w=50 ≈ w=25).
-- **Predictions** (w=25, ν=0.01 held-out): ceiling = analytic baseline (Spearman ≈ 1.0,
-  R² ≈ 0.9999); realistic with a trainable encoder: **Spearman(z,νD) ≈ 0.85–0.95,
-  R² affine ≈ 0.6–0.9**. Falsification: Spearman @ν=0.01 < 0.8 (below probe-on-h = 0.655
-  would even mean the anchoring hurts) → the scalar bottleneck cannot preserve νD.
+- **Runs (plan revu pré-lancement, pré-enregistré)** : run principal **`aphys_mono0`**
+  (energy_centered, λ_z=1, **λ_mono=0**) sur **3 graines** (42, 7, 123) — le hinge est
+  physiquement faux (νD non monotone : 68.8 % de pas montants à ν=0.01) et numériquement
+  inerte à λ=0.1 (|Δz| médian 0.0069 en unités standardisées → contribution ≈ 1.5e-5 contre
+  une z_loss O(0.01–1)) ; ablation **`aphys`** (λ_mono=0.1) sur 1 graine (42) ; contrôle
+  **`asup`** (supervised) sur 1 graine (42), interprété comme sensibilité au bruit FD
+  (cibles identiques à 0.35 % près), pas comme test physique ; **`window-A` (`--z-target none`)
+  relancé sur les graines 7 et 123** pour une comparaison appariée par graine. w=25 only
+  (C2: w=50 ≈ w=25).
+- **Références pré-enregistrées** (w=25, ν=0.01 held-out, test) : plafond analytique
+  (Spearman 1.0000, R² 0.9999, rel_rmse 0.012) ; **référence principale = C2 supervisé
+  c3_window w25 held-out** (même encodeur, même fenêtre, supervision νD : Spearman 0.973,
+  R² 0.690, pente 0.90, rel_rmse 0.795, IC bootstrap-95 % [0.922, 0.986] — reproduit depuis le
+  checkpoint via `main_export_predictions.py` + `main_bootstrap_a_seq.py`,
+  `outputs/logs/bootstrap_references.json`) ; sonde linéaire sur h = 0.655 ; window-A none =
+  0.249. **4 issues pré-enregistrées** : (i) aphys ≈ C2 (Spearman ≥ 0.95) → z préserve νD
+  aussi bien que la supervision directe ; (ii) entre 0.655 et C2 → préservation partielle ;
+  (iii) < 0.655 → L_z sélectionne moins bien que la sonde linéaire sur h (problème de
+  sélection/optimisation, pas d'information) ; (iv) > C2 → L_z dépasse la supervision directe
+  (à interpréter avec prudence : cibles quasi identiques).
+- **Prédictions chiffrées** (w=25, ν=0.01 held-out) : si L_z fonctionne, Spearman(z,νD) ∈
+  [0.85, 1.0], R² affine ∈ [0.6, 0.9999]. Falsification : Spearman < 0.655 (sonde h).
+- **Sauvegarde des prédictions** : chaque run écrit `predictions_test.npz` (z en unités
+  physiques, h, ic_type_id, E, D, max|u_x|, nu, time_t, trajectory_index, time_index_t,
+  energy0, nu_dissipation_t, nuD_est_t, split, protocol, seed — **tous modes, y compris
+  `none`**) → bootstrap par trajectoire et IC inter-graines via `main_bootstrap_a_seq.py`,
+  rapportés **séparément**. Les checkpoints historiques (window-A w25/w50, C2 c3 w25/w50) ont
+  été réexportés au même format (`main_export_predictions.py`, env torch).
+- **Queue lourde** (mesurée sur la population exacte des paires train heldout, n=30 400,
+  t∈[24,99], ν∈{0.05,0.2}) : standardiseur mean=0.169343, std=0.180477 ; kurtosis de z
+  standardisé = 8.8, top 1 % = 21.7 % de Σz², top 5 % = 50.3 %. Côté test ν=0.01 : **0 % des
+  fenêtres hors plage** (max νD test = 1.4509 < max train = 1.8121), mais 5.2 % des fenêtres
+  à |z| > 3 (max +7.05) → la queue vient de la forme de la distribution, pas d'une
+  extrapolation hors plage. Condition pré-enregistrée : cible en log(νD) (ou perte de Huber
+  sur z standardisé) **seulement si** la pente de calibration à ν=0.01 sort de [0.8, 1.2].
 - **Success criteria**: verdict v2 (`verdict_a_seq`): r_holdout ≥ 0.8, R²_affine ≥ 0.5,
   calibration slope ∈ [0.5, 2], beats ν-oracle, structural = rank ≥ 3 + rec RMSE ≤ 0.15
   (monotone not_applicable); IDENTIFIABLE / PARTIAL / NOT IDENTIFIABLE.
@@ -741,9 +779,16 @@ Run (torch env):
 ```
 python main_analytic_nuD_baseline.py                       # baseline analytique (sans réseau)
 for s in 42 7 123; do
-  python main_train_latent_seq.py --tag aphys --seed $s --z-target energy_centered --z-weight 1.0 --mono-weight 0.1
+  python main_train_latent_seq.py --tag aphys_mono0 --seed $s --z-target energy_centered --z-weight 1.0 --mono-weight 0
 done
+python main_train_latent_seq.py --tag aphys --seed 42 --z-target energy_centered --z-weight 1.0 --mono-weight 0.1
 python main_train_latent_seq.py --tag asup --seed 42 --z-target supervised --z-weight 1.0 --mono-weight 0.1
+for s in 7 123; do
+  python main_train_latent_seq.py --tag wina --seed $s --z-target none   # window-A apparié par graine
+done
+python main_export_predictions.py --which all          # (env torch) réexport des checkpoints -> predictions_test.npz
+python main_bootstrap_a_seq.py --glob "outputs/models/latent_dynamics_autoencoder_seq/*/predictions_test.npz" \
+    --out outputs/logs/bootstrap_a_seq.json           # IC bootstrap par trajectoire + IC inter-graines
 python main_analyze_window_a_latents.py        # inclut les runs _z*_s* automatiquement
 ```
 
