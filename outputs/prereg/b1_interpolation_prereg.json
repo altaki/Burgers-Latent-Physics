@@ -1,0 +1,63 @@
+{
+  "experiment": "B1_interpolation_heldout_nu005",
+  "prereg_md": "outputs/prereg/b1_interpolation_prereg.md",
+  "question": "le transfert de z a un nu non vu tient-il en interpolation (train/val nu in {0.01,0.20}, evaluation a nu=0.05) ?",
+  "protocole": {
+    "name": "heldout_nu005",
+    "train_val_nu": [0.01, 0.2],
+    "test": "complet",
+    "window_size": 25,
+    "stride": 1,
+    "t_index": [24, 99],
+    "code_reference": "ml_train_experiment_a_seq.py:180-181,205-206 (filtre train ET val)"
+  },
+  "nu_eval": 0.05,
+  "runs": [
+    {"tag": "aphys_mono0", "z_target_mode": "energy_centered", "z_weight": 1.0, "monotonicity_weight": 0.0, "seeds": [42, 7, 123], "run_pattern": "window_w25_heldout_nu005_zenergy_centered_s{seed}"},
+    {"tag": "none", "z_target_mode": "none", "z_weight": 0.0, "seeds": [42, 7, 123], "run_pattern": "window_w25_heldout_nu005_s{seed}"}
+  ],
+  "hyperparams": {
+    "batch_size": 256, "learning_rate": 1e-3, "num_epochs": 200, "patience": 10,
+    "latent_dim": 8, "conv_channels": [16, 32, 32, 64, 64], "kernel_size": 5, "conv_stride": 2,
+    "trunk_dims": [256], "decoder_hidden_dims": [64, 128], "predictor_hidden_dims": [64, 64],
+    "reconstruction_weight": 1.0, "prediction_weight": 1.0, "variance_weight": 0.01,
+    "min_latent_variance": 0.01, "standardize_z_target": true, "standardizer_fit_on": "train du protocole"
+  },
+  "phase0_mesures": {
+    "0.1_standardisation_train": {"n": 30400, "mean": 0.1705, "std": 0.2060, "kurtosis_excess": 6.61, "max_abs_z": 7.98, "part_sigma_z2_top1pct": 0.2267, "part_sigma_z2_top5pct": 0.5064, "heldout_nu_historique_top5pct": 0.5028},
+    "0.3_frac_test_nu005_hors_plage_train": 0.0,
+    "0.4_baselines_nu005": {
+      "plafond_centre": {"spearman": 1.0, "r2": 1.0, "slope": 1.0, "rel_rmse": 0.0005},
+      "causal_w25": {"spearman": 0.9923, "r2": 0.9166, "slope": 1.028, "rel_rmse": 0.3404},
+      "nu_oracle": {"valeur": 0.1708, "r2": -0.0007, "rel_rmse": 1.1793},
+      "baseline_E_t": {"a": 0.3544, "b": 0.0219, "spearman": 0.7658, "r2": 0.4769, "slope": 0.4359, "rel_rmse": 0.8527}
+    },
+    "0.5_A1_nu005": {"n_traj": 50, "pic_interieur": 19, "pic_interieur_et_5pas": 17, "pic_t2": 9, "pic_avant_0.48": 22, "frac_pas_croissants": 0.3982},
+    "0.6_ratio_median_z_D_nu005_run_standard": 0.0489,
+    "0.7_C2_r2_in_distribution": {"nu=0.01": 0.9472, "nu=0.05": 0.9087, "nu=0.2": 0.9910}
+  },
+  "decision_rule": {
+    "verdict": "IDENTIFIABLE si toutes les conditions C1-C7 vraies ; NOT IDENTIFIABLE si F1 ; PARTIEL sinon",
+    "aggregation": "moyenne des 3 graines (aphys_mono0), IC inter-graines t ddl=2 rapportes ; z en unites physiques",
+    "conditions": [
+      {"id": "C1_spearman", "metric": "spearman_z_nuD", "nu": 0.05, "op": ">=", "threshold": 0.8, "ic": "t_ddl2", "statut": "CONFIRMATOIRE"},
+      {"id": "C2_r2_affine", "metric": "r2_affine_nuD_z", "nu": 0.05, "op": ">=", "threshold": 0.5, "ic": "t_ddl2", "statut": "CONFIRMATOIRE"},
+      {"id": "C3_slope", "metric": "calibration_slope", "nu": 0.05, "op": "in", "range": [0.5, 2.0], "ic": "t_ddl2", "statut": "CONFIRMATOIRE"},
+      {"id": "C4_beats_nu_oracle", "metric": "rel_rmse_z", "nu": 0.05, "op": "<", "comparator": "rel_rmse_nu_oracle", "comparator_nu": 0.05, "comparator_value_phase0": 1.1793, "statut": "CONFIRMATOIRE"},
+      {"id": "C5_rang_effectif", "metric": "effective_rank_h", "op": ">=", "threshold": 3, "statut": "CONFIRMATOIRE"},
+      {"id": "C6_rec_rmse", "metric": "reconstruction_rmse_test", "op": "<=", "threshold": 0.15, "statut": "CONFIRMATOIRE"},
+      {"id": "C7_separation_nuD_D", "metric": "median_z_over_D", "nu": 0.05, "op": "in", "range": [0.025, 0.10], "statut": "CONFIRMATOIRE"}
+    ],
+    "fail_condition": {"id": "F1", "metric": "spearman_z_nuD", "nu": 0.05, "op": "<", "threshold": 0.655},
+    "complementaire_hors_verdict": [
+      {"id": "X1_appariement_vs_none", "description": "dSpearman aphys-none par graine, IC t ddl=2 ; PAS un critere du verdict (lecon A1 ccb139a)", "statut": "COMPLEMENTAIRE"},
+      {"id": "X2_A1_nu005", "description": "metriques A1 intra-trajectoire a nu=0.05, n_effectif=17 traj -> non seuillees", "statut": "EXPLORATOIRE"},
+      {"id": "X3_huber_variant", "declenchement": "part_sigma_z2_top1pct > 0.30 sur train heldout_nu005 (mesure phase0: 0.2267 -> NON declenche)", "statut": "EXPLORATOIRE_SI_DECLENCHE"}
+    ]
+  },
+  "predictions": {
+    "aphys_mono0_nu005": {"spearman": [0.90, 0.99], "r2": [0.6, 0.95], "slope": [0.8, 1.1], "rel_rmse_lt": 1.179, "median_z_over_D": 0.05, "verdict_attendu": "IDENTIFIABLE ou PARTIAL (C6 rec RMSE possiblement > 0.15 comme au Step 6)"},
+    "none_nu005": {"spearman_lt": 0.655, "verdict_attendu": "NOT IDENTIFIABLE"}
+  },
+  "falsification": "aphys Spearman < 0.655 -> transfert interpolation echoue ; R2 < 0.5 ou rec RMSE > 0.15 -> PARTIAL ; median z/D hors [0.025,0.10] -> z suit D pas nuD"
+}
