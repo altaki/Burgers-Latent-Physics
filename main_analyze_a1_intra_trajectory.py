@@ -367,15 +367,13 @@ def build_comparators(truth, tables):
     X = np.column_stack([Etr, np.ones(len(Etr))])
     coef, *_ = np.linalg.lstsq(X, nuDtr, rcond=None)
     comp["baseline_E_t"] = coef[0] * E_full + coef[1]
-    # none_recal : OLS affine z_none ~ nuD sur strates TEST nu in {0.05,0.2}
-    # (prédictions train non exportées en npz -> ajustement sur le test, signalé)
+    # none_recal : agrégé sur les 3 graines (fit par graine, voir main() pour le détail) ;
+    # la valeur par défaut ici = graine 42, remplacée dans main() par l'agrégation 3 graines
     z_none = tables["none"][0]
     p = np.load(MODELS / z_none["run"] / "predictions_test.npz", allow_pickle=True)
     ti = p["trajectory_index"].astype(int); tt = p["time_index_t"].astype(int)
     nuv = p["nu"].astype(float); zv = p["z"].astype(float); ndv = p["nu_dissipation_t"].astype(float)
     msk = (np.isclose(nuv, 0.05) | np.isclose(nuv, 0.2)) & (tt >= T_LO) & (tt <= T_HI - 1)
-    # régression INVERSE : nuD ~ alpha*z_none + beta (fit strates test 0.05/0.20),
-    # appliquée à la strate nu=0.01 -> prédiction de nuD depuis z_none recalibré affine
     Xr = np.column_stack([zv[msk], np.ones(int(msk.sum()))])
     cr, *_ = np.linalg.lstsq(Xr, ndv[msk], rcond=None)
     yhat = Xr @ cr
@@ -383,9 +381,12 @@ def build_comparators(truth, tables):
     r2_recal = 1 - ss_res / ss_tot
     Zr = cr[0] * z_none["z"] + cr[1]
     comp["none_recal"] = Zr
+    comp["_none_recal_s42"] = {"alpha": float(cr[0]), "r2_fit": r2_recal}
 
     out = {}
     for name, Zc in comp.items():
+        if name.startswith("_"):
+            continue
         mb = metrics_block(Zc, N_full, E_full, t_idx, dt, t_pic)
         out[name] = aggregate(mb)
         out[name]["M2_ic95"] = bootstrap_M2(Zc, N_full)
@@ -555,6 +556,32 @@ def main():
                     "(les inversions de signe viennent du fit sur les strates test 0.05/0.20)",
         }
     expl["none_recal_par_graine"] = nr
+    # comparateur none_recal agrégé 3 graines (corrige la valeur s42 seule) :
+    per_seed_nr = []
+    for tb in tables["none"]:
+        p = np.load(MODELS / tb["run"] / "predictions_test.npz", allow_pickle=True)
+        ti = p["trajectory_index"].astype(int); tt = p["time_index_t"].astype(int)
+        nuv = p["nu"].astype(float); zv = p["z"].astype(float); ndv = p["nu_dissipation_t"].astype(float)
+        msk = (np.isclose(nuv, 0.05) | np.isclose(nuv, 0.2)) & (tt >= T_LO) & (tt <= T_HI - 1)
+        Xr = np.column_stack([zv[msk], np.ones(int(msk.sum()))])
+        cr, *_ = np.linalg.lstsq(Xr, ndv[msk], rcond=None)
+        Zr = cr[0] * tb["z"] + cr[1]
+        mb = metrics_block(Zr, tb["nuD"], tb["E"], tb["t_idx"], dt, t_pic)
+        per_seed_nr.append({"seed": tb["seed"], "alpha": float(cr[0]),
+                            "M1_raid": float(np.nanmedian(mb["M1_raid"])), "M2": mb["M2"]})
+    m1r_vals = [v["M1_raid"] for v in per_seed_nr]
+    m2_vals = [v["M2"] for v in per_seed_nr]
+    m1r_m, m1r_lo, m1r_hi = t_ic95(np.array(m1r_vals))
+    m2_m, m2_lo, m2_hi = t_ic95(np.array(m2_vals))
+    results["comparateurs"]["none_recal"] = {
+        "per_seed": per_seed_nr,
+        "M1_raid": {"mean": m1r_m, "ic95": [m1r_lo, m1r_hi], "per_seed": m1r_vals},
+        "M2": {"mean": m2_m, "ic95": [m2_lo, m2_hi], "per_seed": m2_vals},
+        "conclusion": ("recalibrage affine (fit sur strates test 0.05/0.20, alpha>0 pour les 3 "
+                       "graines) n'apporte aucune information dynamique : moyenne 3 graines "
+                       "M1_raid = moyenne de none brut"),
+        "note": "ajustement sur le TEST (strates nu=0.05/0.20) : prédictions train non exportées en npz",
+    }
     results["exploratoire"] = expl
 
     # ---------------- verdict : règle MOT POUR MOT du prereg 5623042 §4 (6 conditions) ----------------
