@@ -682,6 +682,7 @@ def verdict_a_seq(
     thresholds: Dict[str, float],
     z_target_mode: str = "none",
     verdict_version: str = "v1",
+    nu_eval: float = 0.01,
 ) -> Dict[str, Any]:
     """
     Verdict sur le protocole heldout_nu, strate nu=0.01, z vs nu*D :
@@ -702,13 +703,14 @@ def verdict_a_seq(
     concernées ; une z parfaite alignée sur νD aurait monotone_fraction ≈ 0.64).
     structural_ok porte alors sur rang + rec RMSE uniquement.
     """
-    h = heldout_results["metrics"]["nu=0.01"]["nu_dissipation"]
+    nu_key = f"nu={nu_eval}"
+    h = heldout_results["metrics"][nu_key]["nu_dissipation"]
     r_holdout = float(h["spearman"])
     r2_holdout = float(h["r2"])
     slope = float(h["calibration_slope"])
     rel_rmse_holdout = float(h["rel_rmse_mean"])
     oracle = float(
-        heldout_results["baselines"]["nu_oracle"]["nu=0.01"]["nu_dissipation"]["rel_rmse_mean"]
+        heldout_results["baselines"]["nu_oracle"][nu_key]["nu_dissipation"]["rel_rmse_mean"]
     )
     beats_nu_oracle = bool(rel_rmse_holdout < oracle)
 
@@ -750,6 +752,7 @@ def verdict_a_seq(
         "target": "nu_dissipation",
         "verdict_version": verdict_version,
         "z_target_mode": z_target_mode,
+        "nu_eval": float(nu_eval),
         "thresholds": dict(thresholds),
         "r_holdout": r_holdout,
         "r2_holdout_nu001": r2_holdout,
@@ -805,6 +808,7 @@ def train_and_evaluate_a_seq(
     standardize_z_target: bool = True,
     monotone_rtol: float = 0.0,
     eval_times: Sequence[float] = (1.0, 2.0),
+    nu_strat: float = 0.01,
     seed: int = 42,
     device: Optional[str] = None,
     num_workers: int = 0,
@@ -818,8 +822,8 @@ def train_and_evaluate_a_seq(
     `z_target_mode` (Experiment A-Physics) : "none" (window-A historique),
     "energy_centered" (z ancré sur nuD_est_t = différence centrée de E,
     auto-supervisé) ou "supervised" (z ancré sur nu_dissipation_t stocké)."""
-    if protocol not in ("standard", "heldout_nu"):
-        raise ValueError("`protocol` doit être 'standard' ou 'heldout_nu'.")
+    if protocol not in ("standard", "heldout_nu", "heldout_nu005"):
+        raise ValueError("`protocol` doit être 'standard', 'heldout_nu' ou 'heldout_nu005'.")
 
     set_global_seed(seed)
     device_obj = torch.device(device or "cpu")
@@ -839,7 +843,7 @@ def train_and_evaluate_a_seq(
     )
 
     # 1) datasets
-    nu_filter_train = tuple(float(v) for v in heldout_nu_values) if protocol == "heldout_nu" else None
+    nu_filter_train = tuple(float(v) for v in heldout_nu_values) if protocol.startswith("heldout") else None
     bundle = build_a_seq_datasets(
         train_path, val_path, test_path,
         window_size=window_size,
@@ -969,14 +973,14 @@ def train_and_evaluate_a_seq(
     # stratification de la strate nu=0.01 selon la plage de nuD vue à l'entraînement
     # (population exacte des paires train du protocole courant)
     nuD_train_max = float(max(train_ds.nu_dissipation[i, t] for (i, t) in train_ds.index_map))
-    range_strat = range_stratified_metrics(z, meta, nuD_train_max, nu_value=0.01)
+    range_strat = range_stratified_metrics(z, meta, nuD_train_max, nu_value=nu_strat)
 
     # 5) sauvegarde
     results: Dict[str, Any] = {
         "experiment": "experiment_a_seq",
         "protocol": protocol,
         "window_size": int(window_size),
-        "heldout_nu_values": list(heldout_nu_values) if protocol == "heldout_nu" else None,
+        "heldout_nu_values": list(heldout_nu_values) if protocol.startswith("heldout") else None,
         "z_target_mode": z_target_mode,
         "standardize_z_target": bool(standardize_z_target and z_key is not None),
         "z_target_standardizer": z_target_standardizer,

@@ -30,8 +30,9 @@ TRAIN_NPZ = DATA_DIR / "train_data_nu_sweep.npz"
 VAL_NPZ = DATA_DIR / "val_data_nu_sweep.npz"
 TEST_NPZ = DATA_DIR / "test_data_nu_sweep.npz"
 HELDOUT_NU = (0.05, 0.2)
+HELDOUT_NU005 = (0.01, 0.2)
 
-ASEQ_RE = re.compile(r"window_w(\d+)_(standard|heldout_nu)(?:_z(\w+))?(?:_s(\d+))?$")
+ASEQ_RE = re.compile(r"window_w(\d+)_(standard|heldout_nu005|heldout_nu)(?:_z(\w+))?(?:_s(\d+))?$")
 EC_RE = re.compile(r"(c\d_\w+?)(?:_w(\d+))?_(standard|heldout_nu)$")
 
 
@@ -67,7 +68,7 @@ def export_a_seq_run(run_dir: Path, device: str = "cpu") -> Path:
     bundle = mt.build_a_seq_datasets(
         TRAIN_NPZ, VAL_NPZ, TEST_NPZ,
         window_size=w,
-        nu_filter_train=HELDOUT_NU if proto == "heldout_nu" else None,
+        nu_filter_train=(HELDOUT_NU005 if proto == "heldout_nu005" else HELDOUT_NU) if proto.startswith("heldout") else None,
     )
     ec_models = mt._load_experiment_c_models_module()
     model = ec_models.build_window_dynamics_autoencoder(**cfg)
@@ -113,7 +114,7 @@ def export_c_run(run_dir: Path, device: str = "cpu") -> Path:
     bundle = ec_datasets.build_experiment_c_datasets(
         TRAIN_NPZ, VAL_NPZ, TEST_NPZ,
         window_size=w,
-        nu_filter_train=HELDOUT_NU if proto == "heldout_nu" else None,
+        nu_filter_train=(HELDOUT_NU005 if proto == "heldout_nu005" else HELDOUT_NU) if proto.startswith("heldout") else None,
     )
     test_win = bundle["test"]["window"]
     ckpt = torch.load(run_dir / "best_model.pt", map_location=device, weights_only=False)
