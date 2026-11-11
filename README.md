@@ -475,6 +475,43 @@ working as designed, not an error. Larger w → later stopping and much lower va
   (fail line relative to the ν-oracle instead of the absolute 0.5); (3) only if a residual
   held-out gap remains: finer ν sweep near 0.01.
 
+### Note de réinterprétation des Steps 4 et C2 (ajoutée après le Step 6 — résultats historiques ci-dessus inchangés)
+
+Mesures de référence (Step 6 pre-run, `main_analytic_nuD_baseline.py`, test nu_sweep_v1,
+lecture seule) :
+
+1. **Le canal qui fait gagner C2 est l'identité d'énergie, et il est quasi sans bruit.**
+   La différence centrée de E, (E_{t−1}−E_{t+1})/(2·dt), estime le νD stocké avec
+   Spearman 1.0000, R² 0.9999, pente 1.007, rel_rmse 0.012 à ν=0.01 (w=25). « Les longues
+   fenêtres rendent νD identifiable » se lit donc plus précisément : *une fenêtre permet de
+   mesurer −ΔE/Δt, qui égale νD par identité — aucune inférence séparée de ν n'est
+   nécessaire*. La performance held-out de C2 (Spearman 0.97, R² 0.69) se situe **sous** ce
+   plafond analytique (1.0 / 0.9999) : le CNN capture le classement mais pas toute la magnitude
+   à ν=0.01.
+2. **L'échec de Step 4 (w=5) n'est pas informationnel.** La pente causale intra-fenêtre à
+   w=5, (E_{t−4}−E_t)/(4·dt), estime déjà νD avec une erreur relative médiane de 2.2 % et
+   Spearman 0.9994 (0.9995 à ν=0.01) — la fenêtre de 5 snapshots *contient* νD. Le modèle
+   entraîné ne l'a pas extrait (tête νD ≈ 0.1·tête D, R² holdout −0.65) parce que l'encodeur
+   partagé privilégie le complexe de choc D (R² 0.96). Cela nuance la conclusion historique
+   « une fenêtre de 0.08 s ne permet pas d'inférer ν » : elle permet de *mesurer* νD ; c'est le
+   modèle entraîné qui ne l'a pas fait. Cohérent avec le Step 5 : ce qui compte est ce que
+   l'objectif sélectionne, pas le contenu informatif brut.
+3. **Biais de sécante** : l'estimateur moyenne-fenêtre se dégrade quand w croît (erreur médiane
+   2.2 % à w=5 → 14 % à w=25 → 27 % à w=50, à cause du raidissement), alors que le modèle
+   s'améliore de w=5 à w=25 — le modèle utilise donc des différences *locales* dans la
+   fenêtre, pas la moyenne ; c'est pourquoi la cible centrée (et non la moyenne) a été
+   retenue pour A-Physics.
+4. **Les verdicts formels « NOT IDENTIFIABLE (threshold artifact) » de C2** bloquaient sur des
+   seuils calibrés dans un autre régime (rel_rmse_fail = 0.5 absolu, inatteignable à ν=0.01 où
+   même l'oracle ν vaut 1.54). Substantiellement, νD est identifiable à ν held-out dès w ≥ 25
+   via le canal énergie. Le même problème de seuils a été traité au Step 6 (verdict v2 :
+   critère de monotonie non applicable car νD n'est pas monotone à faible ν).
+5. **Pont Steps 4/C2 → 5 → 6** : window-A a échoué (r_holdout 0.249) précisément parce que la
+   loss A ne sélectionne pas le canal pente d'énergie (sonde linéaire sur h : 0.655, donc
+   partiellement présent) ; A-Physics l'injecte explicitement (L_z = MSE(z, νD_est)) avec un
+   plafond analytique Spearman ≈ 1.0. L'arc est cohérent : l'information est la pente
+   d'énergie ; la question ouverte est de savoir si un objectif *latent* peut la sélectionner.
+
 ## Step 5 — Architecture A-Sequence (implemented — results: NOT IDENTIFIABLE)
 
 Motivation (from C2): w=25 ≈ w=50 ≫ w=5, and at w ≥ 25 νD is largely identifiable from
