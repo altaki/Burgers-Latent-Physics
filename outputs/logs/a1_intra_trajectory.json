@@ -2438,36 +2438,59 @@
    "n_t": 76,
    "n_traj_raid_ok": 49,
    "n_pic_int": 29
+  },
+  "none_recal_par_graine": {
+   "s42": {
+    "run": "window_w25_heldout_nu",
+    "alpha": 252833.23509834913,
+    "beta": -5335.519113007224,
+    "signe_alpha": 1,
+    "r2_fit_strates_test_0.05_0.20": 0.19644610901396653,
+    "M1_raid_avant": 0.5231418734066826,
+    "M1_raid_apres": 0.5231418734152863,
+    "note": "recalibration affine : M1_raid_apres = |M1_raid_avant| si alpha>0, -|...| si alpha<0 (les inversions de signe viennent du fit sur les strates test 0.05/0.20)"
+   },
+   "s7": {
+    "run": "window_w25_heldout_nu_s7",
+    "alpha": 313941.88167983113,
+    "beta": -64335.11773880094,
+    "signe_alpha": 1,
+    "r2_fit_strates_test_0.05_0.20": 0.13530931942738134,
+    "M1_raid_avant": -0.7417816660506464,
+    "M1_raid_apres": -0.7417816661149601,
+    "note": "recalibration affine : M1_raid_apres = |M1_raid_avant| si alpha>0, -|...| si alpha<0 (les inversions de signe viennent du fit sur les strates test 0.05/0.20)"
+   },
+   "s123": {
+    "run": "window_w25_heldout_nu_s123",
+    "alpha": 6150.321253706614,
+    "beta": 1003.2627986468935,
+    "signe_alpha": 1,
+    "r2_fit_strates_test_0.05_0.20": 0.01427898287309537,
+    "M1_raid_avant": -0.7564680712450021,
+    "M1_raid_apres": -0.7564680712438062,
+    "note": "recalibration affine : M1_raid_apres = |M1_raid_avant| si alpha>0, -|...| si alpha<0 (les inversions de signe viennent du fit sur les strates test 0.05/0.20)"
+   }
   }
  },
  "verdict": {
-  "verdict": "PARTIEL",
-  "formulation": "tous les crit\u00e8res intra-run satisfaits ; comparaison appari\u00e9e inter-graines non concluante \u00e0 n=3 (IC95 t ddl=2 inclut 0)",
-  "conditions_prereg_5623042": {
-   "1_M1_raid>=0.7": true,
+  "verdict": "TRACEUR DYNAMIQUE",
+  "regle_decision": "prereg 5623042 \u00a74, 6 conditions, appliqu\u00e9es telles quelles ; la comparaison appari\u00e9e vs none (\u00a73) est une analyse compl\u00e9mentaire",
+  "conditions_prereg_5623042_\u00a74": {
+   "1_M1_raid_Pearson>=0.7": true,
    "2_M3_k5_raid>=0.8": true,
-   "3_M2>=0.5_avec_IC95_excluant_0": true,
-   "4_M1_raid>M1_raid(E_t)": true,
-   "5_|M4_pic_int|<=0.3s": true,
+   "3_M2_pool>=0.5_avec_IC95_excluant_0": true,
+   "4_M1_raid>M1_raid(baseline_E_t)_avec_IC_diff_excluant_0": true,
+   "5_|M4|_median<=0.3s": true,
    "6_M6>=0.5": true
-  },
-  "comparaison_apparee_inter_graines": {
-   "mean": 1.2994408415012486,
-   "ic95_t_ddl2": [
-    -0.517366561650155,
-    3.1162482446526525
-   ],
-   "per_seed": [
-    1.7172674199376303,
-    0.4550184625872298,
-    1.7260366419788857
-   ],
-   "concluante": false
   },
   "valeurs": {
    "M1_raid": 0.9744048868715932,
+   "M1_raid_ic95_inter_graines": [
+    0.9634820417635915,
+    0.9853277319795949
+   ],
    "M2": 0.9134211605725219,
-   "M2_ic95": [
+   "M2_ic95_bootstrap_s42": [
     0.9089142329918343,
     0.9594217333713931
    ],
@@ -2475,12 +2498,49 @@
    "M4_pic_int_s": -0.02,
    "M6": 0.8101262289653975,
    "M8_raid": -0.935235796931543,
-   "M1_raid_baseline_E_t": -0.9760857181337398
-  },
-  "limites": [
-   "IC appari\u00e9e \u00e0 n=3 graines (t ddl=2 = 4.303) : manque de puissance, les 3 diff\u00e9rences par graine sont positives",
-   "M5 au bord de plage pour les baselines ; M2(horloge) = -1 par construction"
-  ]
+   "M1_raid_baseline_E_t": -0.9760857181337398,
+   "diff_M1_raid_vs_E_t": {
+    "diff": 1.950490605005333,
+    "ic95": [
+     1.9395677598973313,
+     1.9614134501133347
+    ]
+   }
+  }
  },
+ "analyse_complementaire": {
+  "appariement_aphys_mono0_vs_none_par_graine": {
+   "per_seed": {
+    "s7": {
+     "dM1_raid": 1.7172674199376303,
+     "dM2": 0.47444713640082076,
+     "dM3_k5_raid": 0.7280219780219781
+    },
+    "s42": {
+     "dM1_raid": 0.4550184625872298,
+     "dM2": 0.5379207928346195,
+     "dM3_k5_raid": 0.40041208791208793
+    },
+    "s123": {
+     "dM1_raid": 1.7260366419788857,
+     "dM2": 0.5280069384288288,
+     "dM3_k5_raid": 0.3935439560439561
+    }
+   },
+   "dM1_raid": {
+    "mean": 1.2994408415012486,
+    "ic95_t_ddl2": [
+     -0.517366561650155,
+     3.1162482446526525
+    ]
+   },
+   "note": "\u00a73 du prereg (agr\u00e9gation), pas un crit\u00e8re du \u00a74 ; non concluant \u00e0 n=3 (IC95 inclut 0), les 3 diff\u00e9rences sont positives -> Limites"
+  }
+ },
+ "limites": [
+  "comparaison appari\u00e9e inter-graines \u00e0 n=3 (t ddl=2 = 4.303) : IC95 [-0.517, 3.116] inclut 0, les 3 diff\u00e9rences par graine sont positives",
+  "M5 au bord de plage pour les baselines ; M2(horloge LOO) = -1 par construction",
+  "code g\u00e9n\u00e9rateur de phase_strat (Step 6) non versionn\u00e9 : reproduit par main_reproduce_phase_strat.py"
+ ],
  "figures": "matplotlib indisponible : s\u00e9ries dans outputs/logs/a1_figures_data.csv"
 }

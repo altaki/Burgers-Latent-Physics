@@ -531,11 +531,40 @@ def main():
     tb = tables["aphys_mono0"][0]
     expl["aphys_mono0_s42_alt_raidissement"] = aggregate(
         metrics_block(tb["z"], tb["nuD"], tb["E"], tb["t_idx"], dt, t_pic, def_raid="dnuD>0"))
+    # none_recal PAR GRAINE (point 6) : fit nuD ~ alpha*z + beta sur strates TEST 0.05/0.20,
+    # appliqué à nu=0.01 ; une recalibration affine ne change que le signe des corrélations
+    nr = {}
+    for tb in tables["none"]:
+        p = np.load(MODELS / tb["run"] / "predictions_test.npz", allow_pickle=True)
+        ti = p["trajectory_index"].astype(int); tt = p["time_index_t"].astype(int)
+        nuv = p["nu"].astype(float); zv = p["z"].astype(float); ndv = p["nu_dissipation_t"].astype(float)
+        msk = (np.isclose(nuv, 0.05) | np.isclose(nuv, 0.2)) & (tt >= T_LO) & (tt <= T_HI - 1)
+        Xr = np.column_stack([zv[msk], np.ones(int(msk.sum()))])
+        cr, *_ = np.linalg.lstsq(Xr, ndv[msk], rcond=None)
+        yhat = Xr @ cr
+        r2 = 1 - float(np.sum((ndv[msk] - yhat) ** 2)) / float(np.sum((ndv[msk] - ndv[msk].mean()) ** 2))
+        Zr = cr[0] * tb["z"] + cr[1]
+        mb_avant = metrics_block(tb["z"], tb["nuD"], tb["E"], tb["t_idx"], dt, t_pic)
+        mb_apres = metrics_block(Zr, tb["nuD"], tb["E"], tb["t_idx"], dt, t_pic)
+        nr[f"s{tb['seed']}"] = {
+            "run": tb["run"], "alpha": float(cr[0]), "beta": float(cr[1]),
+            "signe_alpha": int(np.sign(cr[0])), "r2_fit_strates_test_0.05_0.20": r2,
+            "M1_raid_avant": float(np.nanmedian(mb_avant["M1_raid"])),
+            "M1_raid_apres": float(np.nanmedian(mb_apres["M1_raid"])),
+            "note": "recalibration affine : M1_raid_apres = |M1_raid_avant| si alpha>0, -|...| si alpha<0 "
+                    "(les inversions de signe viennent du fit sur les strates test 0.05/0.20)",
+        }
+    expl["none_recal_par_graine"] = nr
     results["exploratoire"] = expl
 
-    # ---------------- verdict : liste EXACTE des 6 conditions du prereg §4 ----------------
+    # ---------------- verdict : règle MOT POUR MOT du prereg 5623042 §4 (6 conditions) ----------------
+    # §4 : "TRACEUR DYNAMIQUE si ... M1_raid Pearson >= 0.7 ET M3 k=5 raid >= 0.8 ET M2 poolé
+    # >= 0.5 avec IC95 excluant 0 ET M1_raid > M1_raid(baseline E_t) avec IC de la différence
+    # excluant 0 ET |M4| médian <= 0.3 s ET M6 >= 0.5."  (6 conditions ; la comparaison appariée
+    # vs none relève du §3 agrégation, pas du §4 -> analyse complémentaire, pas critère.)
     ag = results["runs"]["aphys_mono0__inter_graines"]
     m1r = ag["M1_raid"]["mean"]
+    m1r_ic = ag["M1_raid"]["ic95"]
     m2 = ag["M2"]["mean"]
     m3k5 = ag["M3_k5_raid"]["mean"]
     m4 = abs(ag["M4_pic_int_s"]["mean"])
@@ -543,37 +572,49 @@ def main():
     m8 = ag["M8_raid"]["mean"]
     m1r_et = results["comparateurs"]["baseline_E_t"]["M1_raid"]["median"]
     m2_ic = results["runs"]["aphys_mono0"][0]["M2_ic95"]
-    dvals = [v["dM1_raid"] for v in pair.values()]
-    dm, dlo, dhi = t_ic95(np.array(dvals))
+    # condition 4 : IC de la différence M1_raid(aphys) - M1_raid(E_t) ; E_t déterministe ->
+    # IC de la différence = IC inter-graines de M1_raid(aphys) décalé de -M1_raid(E_t)
+    d_et = m1r - m1r_et
+    d_et_ic = [m1r_ic[0] - m1r_et, m1r_ic[1] - m1r_et]
     cond = {
-        "1_M1_raid>=0.7": m1r >= 0.7,
+        "1_M1_raid_Pearson>=0.7": m1r >= 0.7,
         "2_M3_k5_raid>=0.8": m3k5 >= 0.8,
-        "3_M2>=0.5_avec_IC95_excluant_0": (m2 >= 0.5) and (m2_ic[0] > 0),
-        "4_M1_raid>M1_raid(E_t)": m1r > m1r_et,
-        "5_|M4_pic_int|<=0.3s": m4 <= 0.3,
+        "3_M2_pool>=0.5_avec_IC95_excluant_0": (m2 >= 0.5) and (m2_ic[0] > 0),
+        "4_M1_raid>M1_raid(baseline_E_t)_avec_IC_diff_excluant_0": (m1r > m1r_et) and (d_et_ic[0] > 0),
+        "5_|M4|_median<=0.3s": m4 <= 0.3,
         "6_M6>=0.5": m6 >= 0.5,
     }
-    apparie = {"mean": dm, "ic95_t_ddl2": [dlo, dhi], "per_seed": dvals,
-               "concluante": bool(dlo > 0)}
-    if all(cond.values()) and apparie["concluante"]:
+    if all(cond.values()):
         verdict = "TRACEUR DYNAMIQUE"
     elif (m1r < 0.3) or (m2 <= 0.2) or (m8 > m1r):
         verdict = "ETIQUETTE STATIQUE"
     else:
         verdict = "PARTIEL"
+    dvals = [v["dM1_raid"] for v in pair.values()]
+    dm, dlo, dhi = t_ic95(np.array(dvals))
     results["verdict"] = {
         "verdict": verdict,
-        "formulation": ("tous les critères intra-run satisfaits ; comparaison appariée "
-                        "inter-graines non concluante à n=3 (IC95 t ddl=2 inclut 0)"),
-        "conditions_prereg_5623042": cond,
-        "comparaison_apparee_inter_graines": apparie,
-        "valeurs": {"M1_raid": m1r, "M2": m2, "M2_ic95": m2_ic, "M3_k5_raid": m3k5,
+        "regle_decision": ("prereg 5623042 §4, 6 conditions, appliquées telles quelles ; "
+                           "la comparaison appariée vs none (§3) est une analyse complémentaire"),
+        "conditions_prereg_5623042_§4": cond,
+        "valeurs": {"M1_raid": m1r, "M1_raid_ic95_inter_graines": m1r_ic, "M2": m2,
+                    "M2_ic95_bootstrap_s42": m2_ic, "M3_k5_raid": m3k5,
                     "M4_pic_int_s": ag["M4_pic_int_s"]["mean"], "M6": m6, "M8_raid": m8,
-                    "M1_raid_baseline_E_t": m1r_et},
-        "limites": ["IC appariée à n=3 graines (t ddl=2 = 4.303) : manque de puissance, "
-                    "les 3 différences par graine sont positives",
-                    "M5 au bord de plage pour les baselines ; M2(horloge) = -1 par construction"],
+                    "M1_raid_baseline_E_t": m1r_et,
+                    "diff_M1_raid_vs_E_t": {"diff": d_et, "ic95": d_et_ic}},
     }
+    results["analyse_complementaire"] = {
+        "appariement_aphys_mono0_vs_none_par_graine": {
+            "per_seed": pair, "dM1_raid": {"mean": dm, "ic95_t_ddl2": [dlo, dhi]},
+            "note": "§3 du prereg (agrégation), pas un critère du §4 ; non concluant à n=3 "
+                    "(IC95 inclut 0), les 3 différences sont positives -> Limites"},
+    }
+    results["limites"] = [
+        "comparaison appariée inter-graines à n=3 (t ddl=2 = 4.303) : IC95 [%.3f, %.3f] inclut 0, "
+        "les 3 différences par graine sont positives" % (dlo, dhi),
+        "M5 au bord de plage pour les baselines ; M2(horloge LOO) = -1 par construction",
+        "code générateur de phase_strat (Step 6) non versionné : reproduit par main_reproduce_phase_strat.py",
+    ]
 
     # ---------------- sorties ----------------
     LOGS.mkdir(parents=True, exist_ok=True)
