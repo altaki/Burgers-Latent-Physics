@@ -1,19 +1,22 @@
 """Lanceur CLI des 6 runs B1 (protocole heldout_nu005, interpolation nu=0.05).
 
-Pré-enregistrement : outputs/prereg/b1_interpolation_prereg.json (commit f431e66).
-AUCUN run n'est lancé par défaut : ce script ne fait que construire la commande.
+Pré-enregistrement : outputs/prereg/b1_interpolation_prereg.json + amendment 1
+(commit fc1075b). AUCUN run n'est lancé par défaut : ce script ne fait que construire
+la commande.
 
 Commandes exactes (env torch, depuis la racine du repo) :
-  python main_train_b1.py --z-target-mode energy_centered --seed 42
-  python main_train_b1.py --z-target-mode energy_centered --seed 7
-  python main_train_b1.py --z-target-mode energy_centered --seed 123
-  python main_train_b1.py --z-target-mode none --seed 42
-  python main_train_b1.py --z-target-mode none --seed 7
-  python main_train_b1.py --z-target-mode none --seed 123
+  python3 main_train_b1.py --z-target-mode energy_centered --seed 42
+  python3 main_train_b1.py --z-target-mode energy_centered --seed 7
+  python3 main_train_b1.py --z-target-mode energy_centered --seed 123
+  python3 main_train_b1.py --z-target-mode none --seed 42
+  python3 main_train_b1.py --z-target-mode none --seed 7
+  python3 main_train_b1.py --z-target-mode none --seed 123
 
 Smoke test (2 époques, train tronqué à 20 trajectoires, copie temporaire dans /tmp,
 aucune écriture dans outputs/) :
-  python main_train_b1.py --z-target-mode energy_centered --seed 42 --smoke
+  python3 main_train_b1.py --z-target-mode energy_centered --seed 42 --smoke
+
+Évaluation (lecture seule) : python3 main_evaluate_b1.py
 
 Ne réécrit jamais un run existant : output_dir = window_w25_heldout_nu005[_z{mode}]_s{seed}.
 """
