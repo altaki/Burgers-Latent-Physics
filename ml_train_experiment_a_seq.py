@@ -205,6 +205,9 @@ def build_a_seq_datasets(
         "train": _make(train_raw, nu_filter_train),
         "val": _make(val_raw, nu_filter_train),
         "test": _make(test_raw, None),
+        # train complet (sans filtre) : sert UNIQUEMENT au calcul de la baseline
+        # nu_oracle (convention README:342 — oracle de nu sur le FULL train).
+        "train_full": _make(train_raw, None),
         "input_standardizer": input_standardizer,
     }
 
@@ -646,18 +649,25 @@ def baseline_z_vs_nuD(
     e0_quartile_edges: Optional[np.ndarray],
     eval_times: Sequence[float],
     protocol: str,
+    train_dataset_full: Any = None,
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
-    """Baselines triviales pour z vs nu*D : moyenne globale et moyenne par nu
-    (nu_oracle, oracle de nu) calculées sur le train."""
+    """Baselines triviales pour z vs nu*D.
+
+    - global_mean : moyenne globale sur le train FILTRÉ du protocole ;
+    - nu_oracle   : moyenne par strate de nu calculée sur le TRAIN COMPLET
+      (`train_dataset_full`, convention README:342 — oracle qui connaît nu,
+      y compris la strate held-out) ; fallback sur le train filtré si non fourni.
+    """
     mt = _load_train_experiment_c_module()
-    train_targets = np.asarray(
-        [[train_dataset.nu_dissipation[i, t]] for (i, t) in train_dataset.index_map],
-        dtype=float,
-    )
-    train_nu = np.asarray([train_dataset.nu_values[i] for (i, _t) in train_dataset.index_map], dtype=float)
     baselines: Dict[str, Any] = {}
     rows: List[Dict[str, Any]] = []
     for kind in ("global_mean", "nu_oracle"):
+        src = train_dataset_full if (kind == "nu_oracle" and train_dataset_full is not None) else train_dataset
+        train_targets = np.asarray(
+            [[src.nu_dissipation[i, t]] for (i, t) in src.index_map],
+            dtype=float,
+        )
+        train_nu = np.asarray([src.nu_values[i] for (i, _t) in src.index_map], dtype=float)
         bp = mt.baseline_predictions(train_targets, train_nu, meta["nu"], kind=kind)
         bn, br = mt.evaluate_predictions(
             bp, np.asarray(meta["nu_dissipation_t"], dtype=float).reshape(-1, 1),
@@ -967,7 +977,8 @@ def train_and_evaluate_a_seq(
         z, meta, e0_quartile_edges, eval_times, protocol, model_label
     )
     baselines, baseline_rows = baseline_z_vs_nuD(
-        train_ds, meta, e0_quartile_edges, eval_times, protocol
+        train_ds, meta, e0_quartile_edges, eval_times, protocol,
+        train_dataset_full=bundle["train_full"],
     )
 
     # stratification de la strate nu=0.01 selon la plage de nuD vue à l'entraînement
