@@ -120,8 +120,24 @@ def print_section(title: str) -> None:
 
 LOSS_KEYS: Tuple[str, ...] = (
     "total_loss", "reconstruction_loss", "prediction_loss",
-    "monotonicity_loss", "variance_loss",
+    "monotonicity_loss", "variance_loss", "z_loss",
 )
+
+# Modes de cible physique pour z (Experiment A-Physics) :
+#   "none"             -> pas de terme z (window-A historique)
+#   "energy_centered"  -> cible = nuD_est_t (différence centrée de E, auto-supervisé)
+#   "supervised"       -> cible = nu_dissipation_t stocké (contrôle supervisé)
+Z_TARGET_MODES: Tuple[str, ...] = ("none", "energy_centered", "supervised")
+
+
+def _z_target_key(z_target_mode: str) -> Optional[str]:
+    if z_target_mode == "none":
+        return None
+    if z_target_mode == "energy_centered":
+        return "nuD_est_t"
+    if z_target_mode == "supervised":
+        return "nu_dissipation_t"
+    raise ValueError(f"`z_target_mode` inconnu: {z_target_mode!r} (attendu {Z_TARGET_MODES})")
 
 
 def _loss_kwargs(
@@ -132,6 +148,7 @@ def _loss_kwargs(
     min_latent_variance: float,
     monotonicity_mode: str,
     prediction_mode: str,
+    z_weight: float = 0.0,
 ) -> Dict[str, Any]:
     return {
         "reconstruction_weight": reconstruction_weight,
@@ -141,6 +158,7 @@ def _loss_kwargs(
         "min_latent_variance": min_latent_variance,
         "monotonicity_mode": monotonicity_mode,
         "prediction_mode": prediction_mode,
+        "z_weight": z_weight,
     }
 
 
@@ -222,10 +240,13 @@ def train_one_epoch_a_seq(
     optimizer: torch.optim.Optimizer,
     device: torch.device,
     loss_kwargs: Dict[str, Any],
+    z_target_mode: str = "none",
 ) -> Dict[str, float]:
     """Une époque : paires de fenêtres (window_t, window_tp), cible de
-    reconstruction = snapshot final u_t. Loss = latent_dynamics_autoencoder_total_loss."""
+    reconstruction = snapshot final u_t. Loss = latent_dynamics_autoencoder_total_loss
+    (+ terme physique z optionnel si z_target_mode != "none")."""
     losses_module = _load_losses_module()
+    z_key = _z_target_key(z_target_mode)
     model.train()
     total = {key: 0.0 for key in LOSS_KEYS}
     total_samples = 0
@@ -234,6 +255,7 @@ def train_one_epoch_a_seq(
         window_t = batch["window_t"].to(device)
         window_tp = batch["window_tp"].to(device)
         u_t = batch["u_t"].to(device)
+        z_target = batch[z_key].to(device) if z_key is not None else None
 
         optimizer.zero_grad()
         outputs = model(window_t, window_tp)
@@ -245,6 +267,7 @@ def train_one_epoch_a_seq(
             z_t=outputs["z_t"],
             z_tp=outputs["z_tp"],
             h_t=outputs["h_t"],
+            z_target=z_target,
             **loss_kwargs,
         )
         loss = losses["total_loss"]
@@ -265,9 +288,11 @@ def evaluate_loss_a_seq(
     dataloader: DataLoader,
     device: torch.device,
     loss_kwargs: Dict[str, Any],
+    z_target_mode: str = "none",
 ) -> Dict[str, Any]:
     """Loss de validation + fraction monotone (z_{t+1} <= z_t sur les paires)."""
     losses_module = _load_losses_module()
+    z_key = _z_target_key(z_target_mode)
     model.eval()
     total = {key: 0.0 for key in LOSS_KEYS}
     total_samples = 0
@@ -278,6 +303,7 @@ def evaluate_loss_a_seq(
         window_t = batch["window_t"].to(device)
         window_tp = batch["window_tp"].to(device)
         u_t = batch["u_t"].to(device)
+        z_target = batch[z_key].to(device) if z_key is not None else None
 
         outputs = model(window_t, window_tp)
         losses = losses_module.latent_dynamics_autoencoder_total_loss(
@@ -288,6 +314,7 @@ def evaluate_loss_a_seq(
             z_t=outputs["z_t"],
             z_tp=outputs["z_tp"],
             h_t=outputs["h_t"],
+            z_target=z_target,
             **loss_kwargs,
         )
 
@@ -319,6 +346,7 @@ def train_window_autoencoder(
     loss_kwargs: Optional[Dict[str, Any]] = None,
     model_config: Optional[Dict[str, Any]] = None,
     input_standardizer: Optional[Any] = None,
+    z_target_mode: str = "none",
     print_every: int = 10,
     verbose: bool = True,
 ) -> Dict[str, Any]:
@@ -336,8 +364,8 @@ def train_window_autoencoder(
     best_model_path = output_dir / "best_model.pt"
 
     for epoch in range(1, num_epochs + 1):
-        train_metrics = train_one_epoch_a_seq(model, train_loader, optimizer, device_obj, loss_kwargs)
-        val_metrics = evaluate_loss_a_seq(model, val_loader, device_obj, loss_kwargs)
+        train_metrics = train_one_epoch_a_seq(model, train_loader, optimizer, device_obj, loss_kwargs, z_target_mode)
+        val_metrics = evaluate_loss_a_seq(model, val_loader, device_obj, loss_kwargs, z_target_mode)
 
         history["train_loss"].append(train_metrics["total_loss"])
         history["val_loss"].append(val_metrics["total_loss"])
@@ -418,7 +446,7 @@ def predict_a_seq(
 
     z_parts, h_parts, rec_parts, u_parts = [], [], [], []
     meta_keys = ("nu", "time_t", "trajectory_index", "time_index_t", "energy0",
-                 "nu_dissipation_t", "energy_t", "dissipation_t")
+                 "nu_dissipation_t", "nuD_est_t", "energy_t", "dissipation_t")
     metas: Dict[str, List[np.ndarray]] = {k: [] for k in meta_keys}
 
     for batch in loader:
@@ -614,6 +642,8 @@ def train_and_evaluate_a_seq(
     min_latent_variance: float = 0.01,
     monotonicity_mode: str = "squared_hinge",
     prediction_mode: str = "mse",
+    z_target_mode: str = "none",
+    z_weight: float = 0.0,
     eval_times: Sequence[float] = (1.0, 2.0),
     seed: int = 42,
     device: Optional[str] = None,
@@ -623,7 +653,11 @@ def train_and_evaluate_a_seq(
 ) -> Dict[str, Any]:
     """Pipeline window-A pour un protocole : datasets -> entraînement (early
     stopping) -> meilleur checkpoint -> prédiction test -> métriques z vs nu*D
-    + baselines + rang latent + rec RMSE + monotonie -> sauvegarde."""
+    + baselines + rang latent + rec RMSE + monotonie -> sauvegarde.
+
+    `z_target_mode` (Experiment A-Physics) : "none" (window-A historique),
+    "energy_centered" (z ancré sur nuD_est_t = différence centrée de E,
+    auto-supervisé) ou "supervised" (z ancré sur nu_dissipation_t stocké)."""
     if protocol not in ("standard", "heldout_nu"):
         raise ValueError("`protocol` doit être 'standard' ou 'heldout_nu'.")
 
@@ -641,6 +675,7 @@ def train_and_evaluate_a_seq(
     loss_kwargs = _loss_kwargs(
         reconstruction_weight, prediction_weight, monotonicity_weight,
         variance_weight, min_latent_variance, monotonicity_mode, prediction_mode,
+        z_weight=z_weight,
     )
 
     # 1) datasets
@@ -707,6 +742,7 @@ def train_and_evaluate_a_seq(
         loss_kwargs=loss_kwargs,
         model_config=model_config,
         input_standardizer=bundle["input_standardizer"],
+        z_target_mode=z_target_mode,
         print_every=print_every,
         verbose=verbose,
     )
@@ -728,7 +764,7 @@ def train_and_evaluate_a_seq(
     }
 
     # loss + monotonie sur le test (paires)
-    test_eval = evaluate_loss_a_seq(model, test_loader, device_obj, loss_kwargs)
+    test_eval = evaluate_loss_a_seq(model, test_loader, device_obj, loss_kwargs, z_target_mode)
     monotone_fraction_test = float(test_eval["monotone_fraction"])
 
     # 4) métriques z vs nu*D + baselines
@@ -746,6 +782,7 @@ def train_and_evaluate_a_seq(
         "protocol": protocol,
         "window_size": int(window_size),
         "heldout_nu_values": list(heldout_nu_values) if protocol == "heldout_nu" else None,
+        "z_target_mode": z_target_mode,
         "model_config": model_config,
         "best_epoch": train_result["best_epoch"],
         "best_val_loss": train_result["best_val_loss"],
@@ -761,10 +798,14 @@ def train_and_evaluate_a_seq(
         "baselines": baselines,
     }
 
-    metrics_json_path = output_dir / f"metrics_window_a_w{window_size}_{protocol}.json"
+    # suffixe de run : "w{w}_{protocol}" (+ "_z{mode}" si terme physique actif)
+    run_suffix = f"w{window_size}_{protocol}"
+    if z_target_mode != "none":
+        run_suffix += f"_z{z_target_mode}"
+    metrics_json_path = output_dir / f"metrics_window_a_{run_suffix}.json"
     save_json(metrics_json_path, results)
     pd.DataFrame(rows + baseline_rows).to_csv(
-        output_dir / f"metrics_long_window_a_w{window_size}_{protocol}.csv", index=False
+        output_dir / f"metrics_long_window_a_{run_suffix}.csv", index=False
     )
     save_json(
         output_dir / "standardizers.json",

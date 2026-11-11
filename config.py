@@ -523,6 +523,13 @@ class ExperimentASeqConfig:
     monotonicity_mode: str = "squared_hinge"
     prediction_mode: str = "mse"
 
+    # Experiment A-Physics (Step 6) : cible physique optionnelle de z.
+    #   "none"            -> window-A historique (pas de terme z)
+    #   "energy_centered" -> z ancré sur nuD_est_t = (E_{t-1}-E_{t+1})/(2*dt) = -dE/dt (auto-supervisé)
+    #   "supervised"      -> z ancré sur nu_dissipation_t stocké (contrôle)
+    z_target_mode: str = "none"
+    z_weight: float = 0.0
+
     # Instants évalués séparément (sous-ensembles "t=...").
     eval_times: List[float] = field(default_factory=lambda: [1.0, 2.0])
 

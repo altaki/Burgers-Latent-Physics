@@ -420,6 +420,8 @@ def latent_dynamics_autoencoder_total_loss(
     min_latent_variance: float = 0.01,
     monotonicity_mode: str = 'squared_hinge',
     prediction_mode: str = 'mse',
+    z_target: Optional[torch.Tensor] = None,
+    z_weight: float = 0.0,
 ) -> Dict[str, torch.Tensor]:
     """
     Perte totale de l'autoencodeur de dynamique latente (Architecture A).
@@ -432,6 +434,10 @@ def latent_dynamics_autoencoder_total_loss(
                                                            encodages RÉELS z_t, z_tp)
           + λ_var  * Σ_j relu(min_var - Var(h_t[:, j]))   (plancher de variance
                                                            PAR DIMENSION sur h_t)
+          + λ_z    * MSE(z_t, z_target)                   (terme physique optionnel,
+                                                           ex. Experiment A-Physics :
+                                                           z ancré sur νD estimé par
+                                                           différence centrée de E)
 
     Remarque importante
     -------------------
@@ -463,6 +469,12 @@ def latent_dynamics_autoencoder_total_loss(
         Mode de la perte de monotonie ('squared_hinge' ou 'hinge').
     prediction_mode : str
         Mode de la perte de prédiction ('mse' ou 'mae').
+    z_target : torch.Tensor ou None
+        Cible physique optionnelle de z_t (même forme que z_t), ex. νD estimé
+        par différence centrée de l'énergie (Experiment A-Physics). None =
+        terme inactif (comportement historique).
+    z_weight : float
+        Poids λ_z du terme MSE(z_t, z_target). Ignoré si z_target est None.
 
     Retour
     ------
@@ -473,6 +485,7 @@ def latent_dynamics_autoencoder_total_loss(
         - prediction_loss
         - monotonicity_loss
         - variance_loss
+        - z_loss (0 si z_target est None)
     """
     rec = reconstruction_loss(reconstruction, target_u, 'mse')
     pred = latent_prediction_loss(predicted_latent, target_latent, prediction_mode)
@@ -484,11 +497,17 @@ def latent_dynamics_autoencoder_total_loss(
     min_var = torch.as_tensor(min_latent_variance, dtype=h_t.dtype, device=h_t.device)
     var_loss = torch.sum(torch.relu(min_var - var_per_dim))
 
+    if z_target is not None:
+        z_loss = F.mse_loss(z_t.reshape(-1), z_target.reshape(-1).to(z_t.dtype))
+    else:
+        z_loss = torch.zeros((), dtype=rec.dtype, device=rec.device)
+
     total = (
         float(reconstruction_weight) * rec
         + float(prediction_weight) * pred
         + float(monotonicity_weight) * mono
         + float(variance_weight) * var_loss
+        + float(z_weight) * z_loss
     )
 
     return {
@@ -497,6 +516,7 @@ def latent_dynamics_autoencoder_total_loss(
         'prediction_loss': pred,
         'monotonicity_loss': mono,
         'variance_loss': var_loss,
+        'z_loss': z_loss,
     }
 
 

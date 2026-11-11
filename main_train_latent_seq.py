@@ -13,6 +13,12 @@ Usage (depuis la racine du projet, environnement torch) :
     python main_train_latent_seq.py --protocols standard     # un seul protocole
     python main_train_latent_seq.py --tag aseq_w50           # rapports suffixés
 
+Experiment A-Physics (Step 6, z ancré sur l'identité d'énergie dE/dt = -νD) :
+
+    python main_train_latent_seq.py --tag aphysics --z-target energy_centered --z-weight 1.0 --mono-weight 0.1
+    python main_train_latent_seq.py --tag asup     --z-target supervised      --z-weight 1.0 --mono-weight 0.1
+    # runs dans outputs/models/latent_dynamics_autoencoder_seq/window_w25_{protocole}_z{energy_centered,supervised}/
+
 Sorties :
 - modèles/métriques : `outputs/models/latent_dynamics_autoencoder_seq/window_w{w}_{protocole}/`
   (best_model.pt, metrics JSON + CSV long, standardizers.json) ;
@@ -64,6 +70,22 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         "--tag", type=str, default="aseq",
         help="Suffixe des rapports globaux (défaut 'aseq' -> experiment_a_seq_summary_aseq.json).",
     )
+    parser.add_argument(
+        "--z-target", type=str, default=None,
+        choices=["none", "energy_centered", "supervised"],
+        help="Cible physique de z (Experiment A-Physics, Step 6) : 'energy_centered' = nuD estimé "
+             "par différence centrée de E (auto-supervisé), 'supervised' = nuD stocké. "
+             "Défaut: config.experiment_a_seq.z_target_mode ('none').",
+    )
+    parser.add_argument(
+        "--z-weight", type=float, default=None, metavar="LZ",
+        help="Poids λ_z du terme MSE(z_t, cible) (défaut: config.experiment_a_seq.z_weight).",
+    )
+    parser.add_argument(
+        "--mono-weight", type=float, default=None, metavar="LM",
+        help="Poids λ_mono du hinge de monotonie (défaut: config.experiment_a_seq.monotonicity_weight). "
+             "Recommandé 0.1 pour A-Physics.",
+    )
     return parser.parse_args(argv)
 
 
@@ -72,6 +94,9 @@ def run_a_seq(
     protocols: Optional[Sequence[str]] = None,
     window_size: Optional[int] = None,
     tag: str = "aseq",
+    z_target_mode: Optional[str] = None,
+    z_weight: Optional[float] = None,
+    mono_weight: Optional[float] = None,
     verbose: bool = True,
 ) -> Dict[str, Any]:
     """Exécute window-A pour chaque protocole demandé et écrit le résumé + verdict."""
@@ -84,6 +109,9 @@ def run_a_seq(
     w = int(window_size) if window_size is not None else int(aseq.window_size)
     if w < 1:
         raise ValueError("`window_size` doit être >= 1.")
+    z_mode = z_target_mode if z_target_mode is not None else aseq.z_target_mode
+    z_w = float(z_weight) if z_weight is not None else float(aseq.z_weight)
+    mono_w = float(mono_weight) if mono_weight is not None else float(aseq.monotonicity_weight)
 
     data_dir = Path(config.paths.data_dir)
     models_root = Path(config.paths.models_dir) / aseq.models_subdir
@@ -96,11 +124,15 @@ def run_a_seq(
         print(f"- protocoles : {protocols}")
         print(f"- fenêtre    : w={w}")
         print(f"- tag        : {tag}")
+        print(f"- z-target   : {z_mode} (λ_z={z_w}, λ_mono={mono_w})")
         print(f"- sorties    : {models_root}")
 
     runs: Dict[str, Dict[str, Any]] = {}
     for protocol in protocols:
-        output_dir = ensure_dir(models_root / f"window_w{w}_{protocol}")
+        run_name = f"window_w{w}_{protocol}"
+        if z_mode != "none":
+            run_name += f"_z{z_mode}"
+        output_dir = ensure_dir(models_root / run_name)
         if verbose:
             print(f"\n--- protocole {protocol} -> {output_dir} ---")
         results = mt.train_and_evaluate_a_seq(
@@ -128,11 +160,13 @@ def run_a_seq(
             dropout=aseq.dropout,
             reconstruction_weight=aseq.reconstruction_weight,
             prediction_weight=aseq.prediction_weight,
-            monotonicity_weight=aseq.monotonicity_weight,
+            monotonicity_weight=mono_w,
             variance_weight=aseq.variance_weight,
             min_latent_variance=aseq.min_latent_variance,
             monotonicity_mode=aseq.monotonicity_mode,
             prediction_mode=aseq.prediction_mode,
+            z_target_mode=z_mode,
+            z_weight=z_w,
             eval_times=aseq.eval_times,
             seed=int(config.reproducibility.seed),
             device=config.ml.device,
@@ -173,6 +207,9 @@ def run_a_seq(
         "dataset_version": "nu_sweep_v1",
         "seed": int(config.reproducibility.seed),
         "window_size": w,
+        "z_target_mode": z_mode,
+        "z_weight": z_w,
+        "monotonicity_weight": mono_w,
         "protocols": protocols,
         "runs": {
             p: {k: v for k, v in info.items() if k != "results"}
@@ -216,6 +253,9 @@ def main(argv: Optional[Sequence[str]] = None) -> Dict[str, Any]:
         protocols=args.protocols,
         window_size=args.window_size,
         tag=args.tag,
+        z_target_mode=args.z_target,
+        z_weight=args.z_weight,
+        mono_weight=args.mono_weight,
         verbose=True,
     )
 

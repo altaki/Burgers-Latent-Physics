@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 from pathlib import Path
 from typing import Any, Dict, Sequence
 
@@ -42,7 +43,8 @@ LOGS_DIR = REPO_ROOT / "outputs" / "logs"
 
 
 def _load_run(run_dir: Path, window_size: int, protocol: str):
-    metrics = json.load(open(run_dir / f"metrics_window_a_w{window_size}_{protocol}.json"))
+    metrics_name = f"metrics_window_a_{run_dir.name.removeprefix('window_')}.json"
+    metrics = json.load(open(run_dir / metrics_name))
     cfg = dict(metrics["model_config"])
     cfg.pop("model", None)
     cfg.pop("loss", None)
@@ -179,20 +181,28 @@ def main(argv: Sequence[str] | None = None) -> None:
     summary = {"experiment": "window_a_h_dims_analysis", "runs": {}}
     probe_summary = {"experiment": "window_a_h_linear_probe", "runs": {}}
     all_rows = []
-    for w in args.window_sizes:
-        for protocol in args.protocols:
-            run_dir = MODELS_DIR / f"window_w{w}_{protocol}"
-            if not (run_dir / "best_model.pt").exists():
-                print(f"[skip] {run_dir} (pas de checkpoint)")
-                continue
-            res, rows = analyze_run(run_dir, w, protocol)
-            all_rows.extend(rows)
-            summary["runs"][run_dir.name] = res
-            probe_summary["runs"][run_dir.name] = {
-                "window_size": res["window_size"], "protocol": res["protocol"],
-                "n_train": res["n_train"], "n_test": res["n_test"],
-                "probe": res["probe"], "dims_vs_D_E": res["dims_vs_D_E"],
-            }
+    # découverte des runs : window_w{w}_{protocole}[_z{mode}] avec best_model.pt
+    run_dirs = sorted(
+        d for d in MODELS_DIR.glob("window_w*")
+        if d.is_dir() and (d / "best_model.pt").exists()
+    )
+    for run_dir in run_dirs:
+        m = re.match(r"window_w(\d+)_(standard|heldout_nu)(?:_z(\w+))?$", run_dir.name)
+        if not m:
+            print(f"[skip] {run_dir.name} (nom non reconnu)")
+            continue
+        w = int(m.group(1))
+        protocol = m.group(2)
+        if w not in args.window_sizes or protocol not in args.protocols:
+            continue
+        res, rows = analyze_run(run_dir, w, protocol)
+        all_rows.extend(rows)
+        summary["runs"][run_dir.name] = res
+        probe_summary["runs"][run_dir.name] = {
+            "window_size": res["window_size"], "protocol": res["protocol"],
+            "n_train": res["n_train"], "n_test": res["n_test"],
+            "probe": res["probe"], "dims_vs_D_E": res["dims_vs_D_E"],
+        }
 
     (LOGS_DIR / "h_dims_window_a_analysis.json").write_text(json.dumps(summary, indent=1))
     (LOGS_DIR / "h_linear_probe_window_a.json").write_text(json.dumps(probe_summary, indent=1))

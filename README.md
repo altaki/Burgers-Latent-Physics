@@ -63,6 +63,10 @@ python main_train_latent_seq.py [--protocols standard heldout_nu] [--window-size
                               #   verdict z-vs-nuD in outputs/logs/experiment_a_seq_summary_{tag}.json
 python main_analyze_window_a_latents.py [--window-sizes 25 50] [--protocols standard heldout_nu]
                               # analyse des latents h des checkpoints window-A (sans ré-entraînement)
+python main_train_latent_seq.py --tag aphysics --z-target energy_centered --z-weight 1.0 --mono-weight 0.1
+                              # Experiment A-Physics (Step 6): z ancré sur nuD estimé par -dE/dt
+python main_train_latent_seq.py --tag asup --z-target supervised --z-weight 1.0 --mono-weight 0.1
+                              # contrôle supervisé: z ancré sur le nuD stocké
 ```
 
 ## Data
@@ -628,6 +632,49 @@ complex. No single dim carries νD at held-out ν (|ρ| ≤ 0.57).
    insufficiency (expected from C1/C2).
 5. **ν-conditioned models / finer ν sweep near 0.01**: dataset-level options if a residual
    held-out gap remains after 2–3.
+
+## Step 6 — Experiment A-Physics (implemented, run pending)
+
+Motivation (Step 5 audit): νD is present in h (linear probe 0.55–0.78 @ν=0.01 held-out)
+but the scalar z does not select it — the problem is the z-objective. A-Physics anchors z
+on the exact energy identity **dE/dt = −νD** via an auxiliary loss
+**L_z = λ_z·MSE(z_t, νD_est_t)**, self-supervised (ν-agnostic → held-out ν by construction).
+
+- **νD_est(t) = (E_{t−1} − E_{t+1})/(2·dt)** — centered difference of the stored raw energy
+  (E_{t+1} = last snapshot of window_tp, available in the pair dataset). Validated on the
+  npz: Pearson/Spearman vs stored νD = 1.000 (finite-difference error ~1e-4 relative).
+  The window-mean variant (E_{t−w}−E_t)/(w·dt) lags by w·dt/2 (Pearson 0.93) — rejected.
+- **Complete loss**: L = λ_rec·MSE(û_t,u_t) + λ_pred·MSE(h_pred_{t+1},h_{t+1})
+  + λ_var·Σ relu(min_var−Var h_j) + λ_mono·mean(relu(z_{t+1}−z_t)²) + λ_z·MSE(z_t, νD_est_t),
+  with **λ_rec=λ_pred=λ_z=1.0, λ_var=0.01 (min_var=0.01), λ_mono=0.1** (hinge demoted to
+  smoothing; it helped select the E-like scalar in window-A). Target in physical units so
+  the calibration slope stays ≈ 1 (the verdict slope window [0.5, 2] is not scale-free).
+- **z stays scalar** (interpretability goal); z∈R² is only a fallback ablation.
+- **Implementation (additive, backward compatible)**: `nuD_est_t` metadata in
+  `NuSweepWindowPairDataset`; optional `z_target`/`z_weight` in
+  `latent_dynamics_autoencoder_total_loss` (inactive by default, returns `z_loss=0`);
+  `z_target_mode` ∈ {none, energy_centered, supervised} threaded through
+  `ml_train_experiment_a_seq.py`; CLI `--z-target/--z-weight/--mono-weight` in
+  `main_train_latent_seq.py`; run dirs `window_w{w}_{protocole}_z{mode}/`;
+  `main_analyze_window_a_latents.py` auto-discovers all `window_w*` runs.
+- **Runs**: `aphysics` (energy_centered) + `asup` (supervised control, one-line target
+  swap) — the pair isolates "physics constraint vs label" and "self-supervised vs
+  extrapolation". Optional λ_z sweep {0.3, 1, 3}.
+- **Predictions** (w=25, ν=0.01 held-out, if it works): Spearman(z,νD) ≈ 0.85–0.95,
+  Pearson ≈ 0.85–0.93, R² affine ≈ 0.6–0.75 (anchors: probe h = 0.655, C2 supervised = 0.973).
+- **Success criteria**: same verdict machinery (`verdict_a_seq`): r_holdout ≥ 0.8,
+  R²_affine ≥ 0.5, calibration slope ∈ [0.5, 2], beats ν-oracle, structural (rank ≥ 3,
+  rec RMSE ≤ 0.15, monotone ≥ 0.9); IDENTIFIABLE / PARTIAL / NOT IDENTIFIABLE.
+
+Run (torch env):
+
+```
+python main_train_latent_seq.py --tag aphysics --z-target energy_centered --z-weight 1.0 --mono-weight 0.1
+python main_train_latent_seq.py --tag asup     --z-target supervised      --z-weight 1.0 --mono-weight 0.1
+python main_analyze_window_a_latents.py        # inclut les runs _z* automatiquement
+```
+
+Read `outputs/logs/experiment_a_seq_summary_aphysics.json` → `verdict.window_a`.
 
 ## Open questions
 

@@ -494,7 +494,10 @@ class NuSweepWindowPairDataset(Dataset):
                   reconstruction du décodeur)
     - u_tp      : tenseur (Nx,) — snapshot final de window_tp
     - métadonnées : nu, time_t, time_tp, trajectory_index, time_index_t,
-      time_index_tp, energy_t, dissipation_t, nu_dissipation_t, energy0
+      time_index_tp, energy_t, dissipation_t, nu_dissipation_t, energy0,
+      nuD_est_t (νD estimé par différence centrée de l'énergie stockée :
+      (E_{t-1} - E_{t+1}) / (2*dt) = -dE/dt, cible auto-supervisée de
+      l'Experiment A-Physics)
     """
 
     def __init__(
@@ -519,6 +522,7 @@ class NuSweepWindowPairDataset(Dataset):
         self.times = np.asarray(dataset["times"], dtype=np.float32)
         self.n_traj, self.n_times, self.nx = self.states.shape
         self.dx = float(np.asarray(dataset["dx"]).item())
+        self.dt = float(self.times[1] - self.times[0]) if self.n_times > 1 else 1.0
 
         if window_size < 1:
             raise ValueError("`window_size` doit être >= 1.")
@@ -599,6 +603,13 @@ class NuSweepWindowPairDataset(Dataset):
             item["dissipation_t"] = float(self.dissipation[traj_idx, time_idx])
             item["nu_dissipation_t"] = float(self.nu_dissipation[traj_idx, time_idx])
             item["energy0"] = float(self.energy0[traj_idx])
+            # νD estimé par différence centrée de l'énergie (identité dE/dt = -νD) :
+            # (E_{t-1} - E_{t+1}) / (2*dt) ; repli décentré au bord.
+            if time_idx >= 1:
+                nuD_est = (self.energy[traj_idx, time_idx - 1] - self.energy[traj_idx, next_idx]) / (2.0 * self.dt)
+            else:
+                nuD_est = (self.energy[traj_idx, time_idx] - self.energy[traj_idx, next_idx]) / self.dt
+            item["nuD_est_t"] = float(nuD_est)
 
         return item
 
