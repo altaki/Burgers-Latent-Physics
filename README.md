@@ -678,7 +678,7 @@ complex. No single dim carries νD at held-out ν (|ρ| ≤ 0.57).
 5. **ν-conditioned models / finer ν sweep near 0.01**: dataset-level options if a residual
    held-out gap remains after 2–3.
 
-## Step 6 — Experiment A-Physics (implemented, pré-enregistré — voir `PREREGISTRATION_experiment_a_physics_v1.md`, runs pending)
+## Step 6 — Experiment A-Physics (implemented, pré-enregistré `212db0f` — voir `PREREGISTRATION_experiment_a_physics_v1.md`, runs done — results below)
 
 Motivation (Step 5 audit): νD is present in h (linear probe 0.55–0.78 @ν=0.01 held-out)
 but the scalar z does not select it — the problem is the z-objective. A-Physics anchors z
@@ -795,6 +795,57 @@ python main_analyze_window_a_latents.py        # inclut les runs _z*_s* automati
 Read `outputs/logs/experiment_a_seq_summary_aphys_s{seed}.json` → `verdict.window_a`
 (`verdict_version: v2_aphysis`, `monotone_check: not_applicable`).
 
+### Step 6 — results (production runs, pré-enregistrement commit `212db0f`)
+
+Runs : `aphys_mono0` (energy_centered, λ_z=1, λ_mono=0) graines 42/7/123 ; `aphys` (λ_mono=0.1) s42 ;
+`asup` (supervised) s42 ; `wina` (none) s7/s123 (+ s42 historique). w=25, heldout_nu.
+Métriques ν=0.01 held-out (test : 3 800 fenêtres / 50 trajectoires), z en **unités physiques** :
+
+| run | Spearman | R² | pente | rel_rmse | beats ν-oracle | rec RMSE | verdict v2 |
+|---|---|---|---|---|---|---|---|
+| aphys_mono0 s42 | 0.9655 | 0.859 | 0.962 | 0.537 | ✓ | 0.1775 | PARTIAL |
+| aphys_mono0 s7 | 0.9683 | 0.791 | 0.962 | 0.652 | ✓ | 0.1702 | PARTIAL |
+| aphys_mono0 s123 | 0.9611 | 0.881 | 0.867 | 0.493 | ✓ | 0.1642 | PARTIAL |
+| aphys (λ_mono=0.1) s42 | 0.9655 | 0.859 | 0.926 | 0.537 | ✓ | 0.1663 | PARTIAL |
+| asup s42 | 0.9602 | 0.824 | 1.011 | 0.600 | ✓ | 0.1700 | PARTIAL |
+| wina none s42/s7/s123 | 0.249 / 0.438 / 0.327 | < 0 | ~0 | 1.4–2.4 | ✗ | 0.1556 / 0.1488 / 0.1484 | NOT IDENTIFIABLE |
+
+- **IC inter-graines** (3 graines appariées) : Spearman 0.9650 ± 0.0036, **IC95 [0.956, 0.974]** ;
+  R² 0.844, IC95 [0.728, 0.960] ; pente 0.930, IC95 [0.794, 1.067] → condition log/Huber non
+  déclenchée. **IC bootstrap par trajectoire** (B=2000, 50 traj) : Spearman IC95 ≈ [0.89, 0.98]
+  par run (`outputs/logs/bootstrap_a_seq.json`). **C2 supervisé (Spearman 0.973, 1 seule graine)
+  tombe dans l'IC bootstrap-95 % des 3 runs aphys** (vérifié numériquement) — on ne dit pas
+  « Δ dans le bruit » : C2 = 1 graine, aphys = 3 graines.
+- **Issue pré-enregistrée (i)** : aphys ≈ C2 sur le rang, R² au-dessus (0.84 vs 0.69). Écart au
+  **plafond analytique** : R² 0.84 vs 0.9995 (perte d'optimisation / goulot scalaire).
+- **νD vs D dans la strate ν=0.01** : νD = 0.01·D, donc Spearman(z,νD) = Spearman(z,D)
+  *exactement* (vérifié : 0.9655 = 0.9655) — le rang ne distingue pas νD de D. La preuve que z
+  suit νD et pas D est en unités physiques : **pente z~νD = 0.87–0.96** (si z suivait D, la pente
+  serait ~100) et **médian z/D @ν=0.01 = 0.0130–0.0142 ≈ ν** (runs none : 0.003 / 0.030 / −0.024,
+  aucune échelle fixe).
+- **Contrôles** : λ_mono 0 vs 0.1 → aucun écart (hinge inerte, ~1.5e-5 prédit) ; asup = aphys
+  (cibles identiques à 0.35 %). **Coût reconstruction apparié** : rec RMSE aphys 0.164–0.178 vs
+  none 0.148–0.156 (+0.016 à +0.022) — c'est ce coût qui fait échouer le seuil 0.15 (**seuil
+  inchangé**), d'où PARTIAL et non IDENTIFIABLE.
+- **Stratifications depuis `predictions_test.npz`** (sans réentraînement,
+  `outputs/logs/aphysis_stratifications.json`) : à ν=0.01, **0 % des fenêtres hors plage**
+  (max νD test 1.4509 < max train 1.8121) ; par phase (dD/dt > 0 = raidissement, 22 % des
+  fenêtres) aphys tient dans les deux phases (Spearman 0.93–0.96 en raidissement, 0.95–0.97 en
+  décroissance ; rel_rmse plus élevé en raidissement : 0.80–1.02 vs 0.31–0.43). **Rang effectif
+  de h** (participation ratio sur le test) : none 3.7–5.7 vs aphys **1.6–2.5** — L_z concentre h
+  sur ~2 directions (z + 1). Analyse per-dim (`h_dims_window_a_analysis.json`) : plusieurs dims
+  portent νD à |sp| 0.74–0.94 (contre ≤ 0.56 diffus en none), sonde h linéaire @ν=0.01 = 0.96–0.97.
+- **Canal énergie vs complexe de choc** : *hypothèse non tranchée*. Les dims porteuses de νD
+  corrèlent avec E (0.65–0.80) et D (0.6–0.74), mais les **corrélations partielles
+  corr(h_j, νD | E, D) à t fixé restent 0.5–0.91** (t=0.5 : h1 +0.91, h4 −0.88, h5 −0.82 ;
+  t=1.0 : h1 +0.86, h4 −0.81) → le signal νD dans h n'est pas réductible aux seuls niveaux E, D.
+- **Transfert** : « transférable » ne vaut que pour l'**extrapolation ν = 0.01** (held-out) ;
+  aucune claim au-delà.
+- **Interprétation** (garde-fou du prereg) : L_z injecte νD via dE/dt = −νD → ces runs montrent
+  la **préservation** d'une observable injectée (z scalaire quasi physique, pente ≈ 0.93), pas
+  sa découverte. C2, supervisé sur νD, montre l'**apprenabilité** du canal énergie par un CNN —
+  pas une découverte non plus. La découverte sans injection reste ouverte (Open questions).
+
 Dataset facts measured on the npz (nu_sweep_v1): Nx=1024, 101 snapshots, dt_saved=0.02
 (T=2.0), max|mass0| = 3.49e-15 (zero_mean applied to ALL IC families, incl. gaussian_bumps),
 max|u| = 1.79. Note: this differs from the legacy spec (Nx=128, solver dt=1e-4,
@@ -810,10 +861,16 @@ save_every=200) — the nu_sweep_v1 npz is the ground truth.
   C2): NO at w=5 (all variants NOT IDENTIFIABLE; νD head ≈ c·D head, c ≈ 0.1), but YES largely
   once the temporal window is long enough — C2: w=25/50 give R² νD = +0.69 and Spearman 0.97
   at held-out ν=0.01, beating the ν-oracle, via the ν-agnostic channel dE/dt = −νD.**
-- Can a *latent* z (Architecture A loss) align with νD at held-out ν? → **Answered (window-A,
-  Step 5): NO — w=25 r_holdout = 0.249, w=50 = −0.035 (NOT IDENTIFIABLE); z is a generic
-  monotone decay scalar, no collapse (rank 6–7). The νD info is in the window but loss A
-  does not select it. Next: per-dim h eval, then physics-informed z (z ≈ −ΔE/Δt).**
+- Can a *latent* z (Architecture A loss, **no νD supervision**) align with νD at held-out ν?
+  → **Answered NO** (window-A, Step 5 + Step 6 `wina`, 3 graines s42/s7/s123 : Spearman @ν=0.01
+  = 0.249 / 0.438 / 0.327, NOT IDENTIFIABLE) — the νD info is in h (linear probe 0.53–0.66) but
+  loss A does not select it.
+- Can an **injected** νD observable be *preserved* in the scalar z at held-out ν? → **Answered
+  YES** (A-Physics, Step 6 : L_z = MSE(z_t, νD_est), 3 graines — Spearman 0.965 ± 0.004,
+  IC95 [0.956, 0.974], pente physique 0.87–0.96, médian z/D ≈ 0.013 ≈ ν, beats ν-oracle) —
+  preservation of an injected observable, not discovery.
+- Can νD be **discovered without injection** (an unsupervised objective selecting the
+  energy-slope channel on its own)? → **Open.**
 - Which loss term creates the structured z — predictor or monotonicity hinge? (A0 ablation, not run)
 - ~~Do residual h dims encode shock position / Fourier content once collapse is fixed?~~ **Partially:
   with the collapse fixed, all h dims are static IC labels (shock_location, Fourier amps, spectral
