@@ -86,6 +86,19 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         help="Poids λ_mono du hinge de monotonie (défaut: config.experiment_a_seq.monotonicity_weight). "
              "Recommandé 0.1 pour A-Physics.",
     )
+    parser.add_argument(
+        "--seed", type=int, default=None,
+        help="Graine (torch/numpy/random + DataLoaders). Apparaît dans le nom du run et des summaries. "
+             "Défaut: config.reproducibility.seed.",
+    )
+    parser.add_argument(
+        "--monotone-rtol", type=float, default=None, metavar="RTOL",
+        help="Tolérance relative de la fraction monotone (défaut: config.experiment_a_seq.monotone_rtol = 0).",
+    )
+    parser.add_argument(
+        "--no-standardize-z-target", action="store_true",
+        help="Désactive la standardisation de la cible z (loss en unités physiques brutes).",
+    )
     return parser.parse_args(argv)
 
 
@@ -97,6 +110,9 @@ def run_a_seq(
     z_target_mode: Optional[str] = None,
     z_weight: Optional[float] = None,
     mono_weight: Optional[float] = None,
+    seed: Optional[int] = None,
+    monotone_rtol: Optional[float] = None,
+    standardize_z_target: Optional[bool] = None,
     verbose: bool = True,
 ) -> Dict[str, Any]:
     """Exécute window-A pour chaque protocole demandé et écrit le résumé + verdict."""
@@ -112,6 +128,9 @@ def run_a_seq(
     z_mode = z_target_mode if z_target_mode is not None else aseq.z_target_mode
     z_w = float(z_weight) if z_weight is not None else float(aseq.z_weight)
     mono_w = float(mono_weight) if mono_weight is not None else float(aseq.monotonicity_weight)
+    seed_val = int(seed) if seed is not None else int(config.reproducibility.seed)
+    rtol = float(monotone_rtol) if monotone_rtol is not None else float(aseq.monotone_rtol)
+    std_z = bool(standardize_z_target) if standardize_z_target is not None else bool(aseq.standardize_z_target)
 
     data_dir = Path(config.paths.data_dir)
     models_root = Path(config.paths.models_dir) / aseq.models_subdir
@@ -123,8 +142,8 @@ def run_a_seq(
         print("=" * 70)
         print(f"- protocoles : {protocols}")
         print(f"- fenêtre    : w={w}")
-        print(f"- tag        : {tag}")
-        print(f"- z-target   : {z_mode} (λ_z={z_w}, λ_mono={mono_w})")
+        print(f"- tag        : {tag}  seed: {seed_val}")
+        print(f"- z-target   : {z_mode} (λ_z={z_w}, λ_mono={mono_w}, standardize={std_z}, rtol={rtol})")
         print(f"- sorties    : {models_root}")
 
     runs: Dict[str, Dict[str, Any]] = {}
@@ -132,6 +151,7 @@ def run_a_seq(
         run_name = f"window_w{w}_{protocol}"
         if z_mode != "none":
             run_name += f"_z{z_mode}"
+        run_name += f"_s{seed_val}"
         output_dir = ensure_dir(models_root / run_name)
         if verbose:
             print(f"\n--- protocole {protocol} -> {output_dir} ---")
@@ -167,8 +187,10 @@ def run_a_seq(
             prediction_mode=aseq.prediction_mode,
             z_target_mode=z_mode,
             z_weight=z_w,
+            standardize_z_target=std_z,
+            monotone_rtol=rtol,
             eval_times=aseq.eval_times,
-            seed=int(config.reproducibility.seed),
+            seed=seed_val,
             device=config.ml.device,
             num_workers=0,
             print_every=10,
@@ -195,21 +217,26 @@ def run_a_seq(
         "monotone_min": aseq.monotone_min,
     }
 
+    verdict_version = "v2_aphysis" if z_mode != "none" else "v1"
     verdict: Dict[str, Any] = {}
     if "standard" in runs and "heldout_nu" in runs:
         verdict["window_a"] = mt.verdict_a_seq(
-            runs["standard"]["results"], runs["heldout_nu"]["results"], thresholds
+            runs["standard"]["results"], runs["heldout_nu"]["results"], thresholds,
+            z_target_mode=z_mode, verdict_version=verdict_version,
         )
 
     summary: Dict[str, Any] = {
         "experiment": "experiment_a_seq",
         "tag": tag,
         "dataset_version": "nu_sweep_v1",
-        "seed": int(config.reproducibility.seed),
+        "seed": seed_val,
         "window_size": w,
         "z_target_mode": z_mode,
         "z_weight": z_w,
         "monotonicity_weight": mono_w,
+        "standardize_z_target": std_z,
+        "monotone_rtol": rtol,
+        "verdict_version": verdict_version,
         "protocols": protocols,
         "runs": {
             p: {k: v for k, v in info.items() if k != "results"}
@@ -220,7 +247,9 @@ def run_a_seq(
     }
 
     def _tagged(filename: str) -> str:
-        return filename if not tag else filename.replace(".json", f"_{tag}.json")
+        # un summary par (tag, graine) : évite l'écrasement par la dernière invocation
+        suffix = f"_{tag}_s{seed_val}" if tag else f"_s{seed_val}"
+        return filename.replace(".json", f"{suffix}.json")
 
     summary_path = logs_dir / _tagged(aseq.summary_filename)
     save_json(summary_path, summary)
@@ -256,6 +285,9 @@ def main(argv: Optional[Sequence[str]] = None) -> Dict[str, Any]:
         z_target_mode=args.z_target,
         z_weight=args.z_weight,
         mono_weight=args.mono_weight,
+        seed=args.seed,
+        monotone_rtol=args.monotone_rtol,
+        standardize_z_target=False if args.no_standardize_z_target else None,
         verbose=True,
     )
 

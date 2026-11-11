@@ -39,6 +39,7 @@ main_visualize_results.py, main_visualize_latent_results.py, main_experiment_c.p
 main_experiment_c2.py        # Experiment C2: long temporal windows (c3_window, w=5/25/50)
 main_train_latent_seq.py     # window-A: latent dynamics autoencoder on w-snapshot windows (Step 5)
 main_analyze_window_a_latents.py  # window-A latent analysis: per-dim h vs nu*D + linear probe (no retraining)
+main_analytic_nuD_baseline.py     # analytic nu*D baseline (no network): centered/backward/causal estimators vs stored nuD
 physics_candidates.py         # ~37 candidate observables + ranking vs a latent scalar
 utils_plotting.py             # figures
 outputs/                      # data/ models/ figures/ logs/ (all results committed)
@@ -67,6 +68,7 @@ python main_train_latent_seq.py --tag aphysics --z-target energy_centered --z-we
                               # Experiment A-Physics (Step 6): z ancré sur nuD estimé par -dE/dt
 python main_train_latent_seq.py --tag asup --z-target supervised --z-weight 1.0 --mono-weight 0.1
                               # contrôle supervisé: z ancré sur le nuD stocké
+python main_analytic_nuD_baseline.py   # baseline analytique nuD_est vs nuD stocké (sans réseau)
 ```
 
 ## Data
@@ -646,35 +648,75 @@ on the exact energy identity **dE/dt = −νD** via an auxiliary loss
   The window-mean variant (E_{t−w}−E_t)/(w·dt) lags by w·dt/2 (Pearson 0.93) — rejected.
 - **Complete loss**: L = λ_rec·MSE(û_t,u_t) + λ_pred·MSE(h_pred_{t+1},h_{t+1})
   + λ_var·Σ relu(min_var−Var h_j) + λ_mono·mean(relu(z_{t+1}−z_t)²) + λ_z·MSE(z_t, νD_est_t),
-  with **λ_rec=λ_pred=λ_z=1.0, λ_var=0.01 (min_var=0.01), λ_mono=0.1** (hinge demoted to
-  smoothing; it helped select the E-like scalar in window-A). Target in physical units so
-  the calibration slope stays ≈ 1 (the verdict slope window [0.5, 2] is not scale-free).
-- **z stays scalar** (interpretability goal); z∈R² is only a fallback ablation.
+  with **λ_rec=λ_pred=λ_z=1.0, λ_var=0.01 (min_var=0.01), λ_mono=0.1**. The z target is
+  **standardized** (mean/std fit on the train split of the current protocol only — heldout_nu
+  → ν∈{0.05,0.2}); z is inverse-transformed to **physical units** for all evaluation metrics,
+  so the calibration slope stays ≈ 1 (the verdict slope window [0.5, 2] is not scale-free).
+  Raw physical-unit MSE would be dominated by large-νD samples and underweight ν=0.01.
+- **Monotonicity**: measured on test nu_sweep_v1, νD is **NOT monotone at low ν** — at ν=0.01,
+  68.8% of steps have νD(t+1)>νD(t) (100% of trajectories affected, median peak at t=1.58);
+  ν=0.05: 38.5% (74% of trajectories); ν=0.2: monotone from t=0. A perfect z=νD would have
+  monotone_fraction ≈ 0.64 (strict) / 0.84 (rtol 1%) — far below the 0.95 threshold. Hence:
+  hinge demoted to smoothing (λ_mono=0.1), and **verdict v2** (`z_target_mode ≠ none`):
+  monotone criterion `not_applicable` in `structural_ok` (rank + rec RMSE only), with
+  `verdict_version` + thresholds snapshot recorded in the output JSON.
+- **z stays scalar** (interpretability goal); z∈R² is only a fallback ablation. Note: with
+  `scalar_head_hidden_dims=[]` the z head is linear in h, so "train z-head on frozen encoder"
+  ≡ the linear probe already done (0.55–0.78) — no extra run needed.
+- **Interpretation guard (circularity)**: energy_centered supervises z with νD *via* the
+  identity dE/dt=−νD. These runs test the **preservation of an injected observable**, not its
+  discovery. Measured: centered estimate vs stored νD → rel err median 1.3e-4, p95 3.5e-3,
+  Spearman 0.999999 — so `energy_centered` and `supervised` targets are numerically almost
+  identical; `asup` is kept only as a 1-seed control, not as an independent experiment.
+- **Temporal alignment**: z_t is computed from window [t−w+1, t] only; the target uses E_{t+1}
+  (outside the window) but it is a *training target*, not an input — no leakage at inference.
+  The causal in-window alternative (E_{t−w+1}−E_t)/((w−1)dt) is far worse: rel err median
+  0.14 (w=25) / 0.27 (w=50) vs 1.3e-4 centered; R² @ν=0.01: 0.78 / 0.50 vs 0.9999. Centered kept.
+- **Analytic baseline (no network)**, `main_analytic_nuD_baseline.py` →
+  `outputs/logs/experiment_a_seq_analytic_baseline.{json,csv}`: centered estimator vs stored
+  νD on test pairs — **Spearman 1.0000, R² 0.9999, slope 1.007, rel_rmse 0.012 @ν=0.01**
+  (w=25; w=50: 0.9999/0.009). This is the ceiling of what L_z can achieve: if z perfectly
+  learned νD_est, Spearman(z,νD) ≈ 1.0. Backward local: R² 0.9995. Causal w=25: Spearman
+  0.987, R² 0.78. Target validation (rel err per ν / per t / during steepening dD/dt>0) is in
+  the same JSON.
 - **Implementation (additive, backward compatible)**: `nuD_est_t` metadata in
   `NuSweepWindowPairDataset`; optional `z_target`/`z_weight` in
-  `latent_dynamics_autoencoder_total_loss` (inactive by default, returns `z_loss=0`);
-  `z_target_mode` ∈ {none, energy_centered, supervised} threaded through
-  `ml_train_experiment_a_seq.py`; CLI `--z-target/--z-weight/--mono-weight` in
-  `main_train_latent_seq.py`; run dirs `window_w{w}_{protocole}_z{mode}/`;
+  `latent_dynamics_autoencoder_total_loss` (inactive by default, `z_loss=0`);
+  `z_target_mode` ∈ {none, energy_centered, supervised} + `standardize_z_target` +
+  `monotone_rtol` threaded through `ml_train_experiment_a_seq.py`; verdict v2 versioned;
+  CLI `--z-target/--z-weight/--mono-weight/--seed/--monotone-rtol/--no-standardize-z-target`;
+  run dirs `window_w{w}_{protocole}[_z{mode}]_s{seed}/`; summaries
+  `experiment_a_seq_summary_{tag}_s{seed}.json` (one per tag+seed — no more overwrite);
   `main_analyze_window_a_latents.py` auto-discovers all `window_w*` runs.
-- **Runs**: `aphysics` (energy_centered) + `asup` (supervised control, one-line target
-  swap) — the pair isolates "physics constraint vs label" and "self-supervised vs
-  extrapolation". Optional λ_z sweep {0.3, 1, 3}.
-- **Predictions** (w=25, ν=0.01 held-out, if it works): Spearman(z,νD) ≈ 0.85–0.95,
-  Pearson ≈ 0.85–0.93, R² affine ≈ 0.6–0.75 (anchors: probe h = 0.655, C2 supervised = 0.973).
-- **Success criteria**: same verdict machinery (`verdict_a_seq`): r_holdout ≥ 0.8,
-  R²_affine ≥ 0.5, calibration slope ∈ [0.5, 2], beats ν-oracle, structural (rank ≥ 3,
-  rec RMSE ≤ 0.15, monotone ≥ 0.9); IDENTIFIABLE / PARTIAL / NOT IDENTIFIABLE.
+- **Runs**: `aphys` (energy_centered, λ_z=1, λ_mono=0.1) on **3 seeds** (42, 7, 123);
+  `asup` (supervised) on 1 seed as redundancy control; optional `aphys_mono0` (λ_mono=0)
+  on 1 seed to isolate the hinge's residual effect. w=25 only (C2: w=50 ≈ w=25).
+- **Predictions** (w=25, ν=0.01 held-out): ceiling = analytic baseline (Spearman ≈ 1.0,
+  R² ≈ 0.9999); realistic with a trainable encoder: **Spearman(z,νD) ≈ 0.85–0.95,
+  R² affine ≈ 0.6–0.9**. Falsification: Spearman @ν=0.01 < 0.8 (below probe-on-h = 0.655
+  would even mean the anchoring hurts) → the scalar bottleneck cannot preserve νD.
+- **Success criteria**: verdict v2 (`verdict_a_seq`): r_holdout ≥ 0.8, R²_affine ≥ 0.5,
+  calibration slope ∈ [0.5, 2], beats ν-oracle, structural = rank ≥ 3 + rec RMSE ≤ 0.15
+  (monotone not_applicable); IDENTIFIABLE / PARTIAL / NOT IDENTIFIABLE.
 
 Run (torch env):
 
 ```
-python main_train_latent_seq.py --tag aphysics --z-target energy_centered --z-weight 1.0 --mono-weight 0.1
-python main_train_latent_seq.py --tag asup     --z-target supervised      --z-weight 1.0 --mono-weight 0.1
-python main_analyze_window_a_latents.py        # inclut les runs _z* automatiquement
+python main_analytic_nuD_baseline.py                       # baseline analytique (sans réseau)
+for s in 42 7 123; do
+  python main_train_latent_seq.py --tag aphys --seed $s --z-target energy_centered --z-weight 1.0 --mono-weight 0.1
+done
+python main_train_latent_seq.py --tag asup --seed 42 --z-target supervised --z-weight 1.0 --mono-weight 0.1
+python main_analyze_window_a_latents.py        # inclut les runs _z*_s* automatiquement
 ```
 
-Read `outputs/logs/experiment_a_seq_summary_aphysics.json` → `verdict.window_a`.
+Read `outputs/logs/experiment_a_seq_summary_aphys_s{seed}.json` → `verdict.window_a`
+(`verdict_version: v2_aphysis`, `monotone_check: not_applicable`).
+
+Dataset facts measured on the npz (nu_sweep_v1): Nx=1024, 101 snapshots, dt_saved=0.02
+(T=2.0), max|mass0| = 3.49e-15 (zero_mean applied to ALL IC families, incl. gaussian_bumps),
+max|u| = 1.79. Note: this differs from the legacy spec (Nx=128, solver dt=1e-4,
+save_every=200) — the nu_sweep_v1 npz is the ground truth.
 
 ## Open questions
 

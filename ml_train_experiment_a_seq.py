@@ -241,10 +241,14 @@ def train_one_epoch_a_seq(
     device: torch.device,
     loss_kwargs: Dict[str, Any],
     z_target_mode: str = "none",
+    z_target_transform: Optional[Tuple[float, float]] = None,
 ) -> Dict[str, float]:
     """Une époque : paires de fenêtres (window_t, window_tp), cible de
     reconstruction = snapshot final u_t. Loss = latent_dynamics_autoencoder_total_loss
-    (+ terme physique z optionnel si z_target_mode != "none")."""
+    (+ terme physique z optionnel si z_target_mode != "none").
+
+    `z_target_transform` = (mean, std) : si fourni, la cible z du batch est
+    standardisée (t - mean)/std avant la loss (mêmes stats pour tous les modes)."""
     losses_module = _load_losses_module()
     z_key = _z_target_key(z_target_mode)
     model.train()
@@ -255,7 +259,13 @@ def train_one_epoch_a_seq(
         window_t = batch["window_t"].to(device)
         window_tp = batch["window_tp"].to(device)
         u_t = batch["u_t"].to(device)
-        z_target = batch[z_key].to(device) if z_key is not None else None
+        if z_key is not None:
+            z_target = batch[z_key].to(device)
+            if z_target_transform is not None:
+                mean, std = z_target_transform
+                z_target = (z_target - mean) / max(std, 1e-8)
+        else:
+            z_target = None
 
         optimizer.zero_grad()
         outputs = model(window_t, window_tp)
@@ -289,8 +299,11 @@ def evaluate_loss_a_seq(
     device: torch.device,
     loss_kwargs: Dict[str, Any],
     z_target_mode: str = "none",
+    z_target_transform: Optional[Tuple[float, float]] = None,
+    monotone_rtol: float = 0.0,
 ) -> Dict[str, Any]:
-    """Loss de validation + fraction monotone (z_{t+1} <= z_t sur les paires)."""
+    """Loss de validation + fraction monotone (z_{t+1} <= z_t + atol sur les paires,
+    atol = monotone_rtol * mean|z_t| si monotone_rtol > 0, sinon 0)."""
     losses_module = _load_losses_module()
     z_key = _z_target_key(z_target_mode)
     model.eval()
@@ -298,12 +311,19 @@ def evaluate_loss_a_seq(
     total_samples = 0
     monotone_ok = 0
     monotone_count = 0
+    monotone_atol = 0.0
 
     for batch in dataloader:
         window_t = batch["window_t"].to(device)
         window_tp = batch["window_tp"].to(device)
         u_t = batch["u_t"].to(device)
-        z_target = batch[z_key].to(device) if z_key is not None else None
+        if z_key is not None:
+            z_target = batch[z_key].to(device)
+            if z_target_transform is not None:
+                mean, std = z_target_transform
+                z_target = (z_target - mean) / max(std, 1e-8)
+        else:
+            z_target = None
 
         outputs = model(window_t, window_tp)
         losses = losses_module.latent_dynamics_autoencoder_total_loss(
@@ -325,11 +345,14 @@ def evaluate_loss_a_seq(
 
         z_t = outputs["z_t"].detach().reshape(-1).cpu().numpy()
         z_tp = outputs["z_tp"].detach().reshape(-1).cpu().numpy()
-        monotone_ok += int(np.sum(z_tp <= z_t))
+        if monotone_rtol > 0:
+            monotone_atol = float(monotone_rtol) * float(np.mean(np.abs(z_t)))
+        monotone_ok += int(np.sum(z_tp <= z_t + monotone_atol))
         monotone_count += int(z_t.shape[0])
 
     metrics: Dict[str, Any] = {key: value / max(total_samples, 1) for key, value in total.items()}
     metrics["monotone_fraction"] = float(monotone_ok / max(monotone_count, 1))
+    metrics["monotone_atol"] = monotone_atol
     return metrics
 
 
@@ -347,6 +370,8 @@ def train_window_autoencoder(
     model_config: Optional[Dict[str, Any]] = None,
     input_standardizer: Optional[Any] = None,
     z_target_mode: str = "none",
+    z_target_transform: Optional[Tuple[float, float]] = None,
+    monotone_rtol: float = 0.0,
     print_every: int = 10,
     verbose: bool = True,
 ) -> Dict[str, Any]:
@@ -364,8 +389,8 @@ def train_window_autoencoder(
     best_model_path = output_dir / "best_model.pt"
 
     for epoch in range(1, num_epochs + 1):
-        train_metrics = train_one_epoch_a_seq(model, train_loader, optimizer, device_obj, loss_kwargs, z_target_mode)
-        val_metrics = evaluate_loss_a_seq(model, val_loader, device_obj, loss_kwargs, z_target_mode)
+        train_metrics = train_one_epoch_a_seq(model, train_loader, optimizer, device_obj, loss_kwargs, z_target_mode, z_target_transform)
+        val_metrics = evaluate_loss_a_seq(model, val_loader, device_obj, loss_kwargs, z_target_mode, z_target_transform, monotone_rtol)
 
         history["train_loss"].append(train_metrics["total_loss"])
         history["val_loss"].append(val_metrics["total_loss"])
@@ -544,6 +569,8 @@ def verdict_a_seq(
     standard_results: Dict[str, Any],
     heldout_results: Dict[str, Any],
     thresholds: Dict[str, float],
+    z_target_mode: str = "none",
+    verdict_version: str = "v1",
 ) -> Dict[str, Any]:
     """
     Verdict sur le protocole heldout_nu, strate nu=0.01, z vs nu*D :
@@ -557,6 +584,12 @@ def verdict_a_seq(
 
     IDENTIFIABLE si les 3 critères held-out + beats_nu_oracle + structurels
     passent ; NOT IDENTIFIABLE si r_holdout < r_holdout_fail ; PARTIAL sinon.
+
+    Version v2 (z_target_mode != "none", Experiment A-Physics) : le critère de
+    monotonie est NOT APPLICABLE — νD n'est pas monotone à faible ν (mesuré sur
+    test nu_sweep_v1 : 68.8% de pas montants à ν=0.01, 100% des trajectoires
+    concernées ; une z parfaite alignée sur νD aurait monotone_fraction ≈ 0.64).
+    structural_ok porte alors sur rang + rec RMSE uniquement.
     """
     h = heldout_results["metrics"]["nu=0.01"]["nu_dissipation"]
     r_holdout = float(h["spearman"])
@@ -572,11 +605,21 @@ def verdict_a_seq(
     effective_rank = float(s["latent_rank"]["effective_rank"])
     rec_rmse = float(s["reconstruction_rmse_test"])
     monotone = float(s["monotone_fraction_test"])
-    struct_ok = bool(
-        effective_rank >= thresholds["rank_min"]
-        and rec_rmse <= thresholds["rec_rmse_max"]
-        and monotone >= thresholds["monotone_min"]
-    )
+    if z_target_mode != "none":
+        # v2 : z ancré sur νD (non monotone à faible ν) -> critère de monotonie
+        # non applicable ; structural_ok = rang + rec RMSE.
+        monotone_check = "not_applicable"
+        struct_ok = bool(
+            effective_rank >= thresholds["rank_min"]
+            and rec_rmse <= thresholds["rec_rmse_max"]
+        )
+    else:
+        monotone_check = "applied"
+        struct_ok = bool(
+            effective_rank >= thresholds["rank_min"]
+            and rec_rmse <= thresholds["rec_rmse_max"]
+            and monotone >= thresholds["monotone_min"]
+        )
 
     held_ok = bool(
         r_holdout >= thresholds["r_holdout_min"]
@@ -594,6 +637,9 @@ def verdict_a_seq(
 
     return {
         "target": "nu_dissipation",
+        "verdict_version": verdict_version,
+        "z_target_mode": z_target_mode,
+        "thresholds": dict(thresholds),
         "r_holdout": r_holdout,
         "r2_holdout_nu001": r2_holdout,
         "calibration_slope_nu001": slope,
@@ -603,6 +649,7 @@ def verdict_a_seq(
         "effective_rank": effective_rank,
         "reconstruction_rmse_test": rec_rmse,
         "monotone_fraction_test": monotone,
+        "monotone_check": monotone_check,
         "structural_ok": struct_ok,
         "verdict": verdict,
     }
@@ -644,6 +691,8 @@ def train_and_evaluate_a_seq(
     prediction_mode: str = "mse",
     z_target_mode: str = "none",
     z_weight: float = 0.0,
+    standardize_z_target: bool = True,
+    monotone_rtol: float = 0.0,
     eval_times: Sequence[float] = (1.0, 2.0),
     seed: int = 42,
     device: Optional[str] = None,
@@ -690,6 +739,30 @@ def train_and_evaluate_a_seq(
     e0_quartile_edges = np.quantile(
         np.asarray(train_ds.energy0, dtype=float), [0.0, 0.25, 0.5, 0.75, 1.0]
     )
+
+    # Standardisation de la cible z (identique pour tous les modes) : stats fit sur
+    # le split TRAIN du protocole courant uniquement. L'évaluation de z vs nu*D
+    # reste en unités physiques (inverse transform de z).
+    z_key = _z_target_key(z_target_mode)
+    z_target_transform: Optional[Tuple[float, float]] = None
+    z_target_standardizer = None
+    if z_key is not None and standardize_z_target:
+        if z_key == "nuD_est_t":
+            arr = train_ds.energy  # (n_traj, n_times), énergie brute
+            vals = np.empty(len(train_ds.index_map), dtype=float)
+            for k, (i, t) in enumerate(train_ds.index_map):
+                tp = t + train_ds.stride
+                if t >= 1:
+                    vals[k] = (arr[i, t - 1] - arr[i, tp]) / (2.0 * train_ds.dt)
+                else:
+                    vals[k] = (arr[i, t] - arr[i, tp]) / train_ds.dt
+        else:
+            arr = train_ds.nu_dissipation
+            vals = np.asarray([arr[i, t] for (i, t) in train_ds.index_map], dtype=float)
+        z_mean = float(np.mean(vals))
+        z_std = float(np.std(vals))
+        z_target_transform = (z_mean, max(z_std, 1e-8))
+        z_target_standardizer = {"mean": z_mean, "std": z_std, "fit_on": "train", "key": z_key}
 
     # 2) modèle + entraînement
     model = ec_models.build_window_dynamics_autoencoder(
@@ -743,6 +816,8 @@ def train_and_evaluate_a_seq(
         model_config=model_config,
         input_standardizer=bundle["input_standardizer"],
         z_target_mode=z_target_mode,
+        z_target_transform=z_target_transform,
+        monotone_rtol=monotone_rtol,
         print_every=print_every,
         verbose=verbose,
     )
@@ -752,6 +827,10 @@ def train_and_evaluate_a_seq(
     # 3) prédiction sur le test complet
     pred = predict_a_seq(model, bundle["test"], device=device_obj, batch_size=batch_size, num_workers=num_workers)
     z, h, rec, u, meta = pred["z"], pred["h"], pred["rec"], pred["u"], pred["meta"]
+    # z en unités PHYSIQUES pour l'évaluation (inverse de la standardisation de cible)
+    if z_target_transform is not None:
+        z_mean, z_std = z_target_transform
+        z = z * z_std + z_mean
 
     reconstruction_rmse_test = float(np.sqrt(np.mean((rec - u) ** 2)))
 
@@ -764,7 +843,7 @@ def train_and_evaluate_a_seq(
     }
 
     # loss + monotonie sur le test (paires)
-    test_eval = evaluate_loss_a_seq(model, test_loader, device_obj, loss_kwargs, z_target_mode)
+    test_eval = evaluate_loss_a_seq(model, test_loader, device_obj, loss_kwargs, z_target_mode, z_target_transform, monotone_rtol)
     monotone_fraction_test = float(test_eval["monotone_fraction"])
 
     # 4) métriques z vs nu*D + baselines
@@ -783,6 +862,9 @@ def train_and_evaluate_a_seq(
         "window_size": int(window_size),
         "heldout_nu_values": list(heldout_nu_values) if protocol == "heldout_nu" else None,
         "z_target_mode": z_target_mode,
+        "standardize_z_target": bool(standardize_z_target and z_key is not None),
+        "z_target_standardizer": z_target_standardizer,
+        "monotone_rtol": float(monotone_rtol),
         "model_config": model_config,
         "best_epoch": train_result["best_epoch"],
         "best_val_loss": train_result["best_val_loss"],
@@ -809,7 +891,10 @@ def train_and_evaluate_a_seq(
     )
     save_json(
         output_dir / "standardizers.json",
-        {"input_standardizer": bundle["input_standardizer"].to_dict()},
+        {
+            "input_standardizer": bundle["input_standardizer"].to_dict(),
+            "z_target_standardizer": z_target_standardizer,
+        },
     )
 
     if verbose:

@@ -187,7 +187,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         if d.is_dir() and (d / "best_model.pt").exists()
     )
     for run_dir in run_dirs:
-        m = re.match(r"window_w(\d+)_(standard|heldout_nu)(?:_z(\w+))?$", run_dir.name)
+        m = re.match(r"window_w(\d+)_(standard|heldout_nu)(?:_z(\w+))?(?:_s(\d+))?$", run_dir.name)
         if not m:
             print(f"[skip] {run_dir.name} (nom non reconnu)")
             continue

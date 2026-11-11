@@ -529,6 +529,11 @@ class ExperimentASeqConfig:
     #   "supervised"      -> z ancré sur nu_dissipation_t stocké (contrôle)
     z_target_mode: str = "none"
     z_weight: float = 0.0
+    # Standardisation de la cible z (mêmes stats train pour tous les modes) ;
+    # l'évaluation de z vs nu*D reste en unités physiques (inverse transform).
+    standardize_z_target: bool = True
+    # Tolérance relative de la fraction monotone (0 = stricte, rétrocompatible).
+    monotone_rtol: float = 0.0
 
     # Instants évalués séparément (sous-ensembles "t=...").
     eval_times: List[float] = field(default_factory=lambda: [1.0, 2.0])
