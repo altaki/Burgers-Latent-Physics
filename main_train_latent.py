@@ -313,7 +313,8 @@ def main() -> Dict[str, Any]:
     # Options disponibles :
     # - 'latent_dynamics'   (recommandé par défaut)
     # - 'latent_autoencoder'
-    training_mode = 'latent_autoencoder'  # <-- Changez ici pour le mode souhaité
+    # - 'latent_dynamics_autoencoder'  (Architecture A : reconstruction + dynamique + monotonie)
+    training_mode = 'latent_dynamics_autoencoder'  # <-- Changez ici pour le mode souhaité
 
     print_section('Mode sélectionné')
     print(f'- Training mode        : {training_mode}')
@@ -409,6 +410,65 @@ def main() -> Dict[str, Any]:
             variance_weight=variance_weight,
             min_scalar_variance=min_latent_variance,
             normalize=normalize,
+            device=device,
+            seed=seed,
+            weight_decay=weight_decay,
+            num_workers=0,
+        )
+
+    elif training_mode == 'latent_dynamics_autoencoder':
+        train_function = training_module.train_latent_dynamics_autoencoder
+        output_dir = models_dir / 'latent_dynamics_autoencoder'
+        output_dir.mkdir(parents=True, exist_ok=True)
+        stride = 1
+        # Architecture A : plancher de variance PAR DIMENSION sur h (0.01),
+        # distinct de l'ancien plancher sur z (config.losses.min_latent_variance).
+        min_latent_variance_h = 0.01
+
+        print_section("Paramètres d'entraînement latent (autoencodeur de dynamique, Architecture A)")
+        print(f'- Batch size           : {batch_size}')
+        print(f'- Learning rate        : {learning_rate}')
+        print(f'- Num epochs           : {num_epochs}')
+        print(f'- Latent dim           : {latent_dim}')
+        print(f'- Weight decay         : {weight_decay}')
+        print(f'- Normalize snapshots  : {normalize}')
+        print(f'- Device               : {device}')
+        print(f'- Stride               : {stride}')
+        print(f'- Reconstruction weight: {reconstruction_weight}')
+        print(f'- Prediction weight    : {prediction_weight}')
+        print(f'- Monotonicity weight  : {monotonicity_weight}')
+        print(f'- Variance weight      : {variance_weight}')
+        print(f'- Min var h (par dim)  : {min_latent_variance_h}')
+        print(f'- Monotonicity mode    : {monotonicity_mode}')
+        print(f'- Output dir           : {output_dir}')
+
+        print_section("Lancement de l'entraînement latent (autoencodeur de dynamique, Architecture A)")
+        results = train_function(
+            train_dataset_path=train_path,
+            val_dataset_path=val_path,
+            output_dir=output_dir,
+            batch_size=batch_size,
+            learning_rate=learning_rate,
+            num_epochs=num_epochs,
+            latent_dim=latent_dim,
+            encoder_hidden_dims=(128, 64),
+            decoder_hidden_dims=(64, 128),
+            predictor_hidden_dims=(64, 64),
+            activation='relu',
+            dropout=0.0,
+            use_scalar_head=True,
+            scalar_head_hidden_dims=(),
+            positive_scalar_output=False,
+            residual_predictor=False,
+            reconstruction_weight=reconstruction_weight,
+            prediction_weight=prediction_weight,
+            monotonicity_weight=monotonicity_weight,
+            variance_weight=variance_weight,
+            min_latent_variance=min_latent_variance_h,
+            prediction_mode='mse',
+            monotonicity_mode=monotonicity_mode,
+            normalize=normalize,
+            stride=stride,
             device=device,
             seed=seed,
             weight_decay=weight_decay,

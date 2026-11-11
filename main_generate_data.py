@@ -372,6 +372,232 @@ def main() -> None:
 
 
 # =============================================================================
+# 7bis. Protocole nu_sweep_v1 : main_nu_sweep() et dispatch par argument
+# =============================================================================
+
+def _load_nu_sweep_builder_symbols():
+    """
+    Charge les symboles nu_sweep_v1 du builder de dataset.
+
+    Chargement PARESSEUX (appelé uniquement depuis `main_nu_sweep`) : le
+    chemin legacy sans argument ne doit pas dépendre des symboles nu_sweep.
+    Nécessite le fichier racine `pde_dataset_builder.py` à jour (les symboles
+    nu_sweep_v1 n'existent pas dans l'ancien package `pde/`).
+    """
+    symbol_names = [
+        "build_and_save_split_from_config_nu_sweep",
+        "summarize_dataset_nu_sweep",
+        "nu_sweep_dataset_sanity_checks",
+        "evaluate_nu_sweep_gates",
+        "run_nu_sweep_pilot",
+    ]
+
+    modules = []
+    try:
+        import pde_dataset_builder as module  # type: ignore
+        modules.append(module)
+    except ModuleNotFoundError:
+        pass
+
+    root_builder = Path("pde_dataset_builder.py")
+    if root_builder.exists():
+        spec = importlib.util.spec_from_file_location(
+            "pde_dataset_builder_nu_sweep", str(root_builder)
+        )
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+        modules.append(module)
+
+    for module in modules:
+        if all(hasattr(module, name) for name in symbol_names):
+            return tuple(getattr(module, name) for name in symbol_names)
+
+    raise ModuleNotFoundError(
+        "Symboles nu_sweep_v1 introuvables : il faut le fichier racine "
+        "`pde_dataset_builder.py` à jour (fonctions : "
+        + ", ".join(symbol_names)
+        + ")."
+    )
+
+
+def _parse_protocol_arg(argv: list[str]) -> str | None:
+    """
+    Interprète les arguments de ligne de commande.
+
+    Retourne None sans argument (chemin legacy inchangé) et "nu_sweep" pour
+    `--protocol nu_sweep`. Tout autre argument lève SystemExit avec un
+    message d'usage (on ne retombe jamais silencieusement sur le legacy).
+    """
+    if not argv:
+        return None
+    if argv == ["--protocol", "nu_sweep"]:
+        return "nu_sweep"
+    raise SystemExit(
+        "Usage : python main_generate_data.py [--protocol nu_sweep]\n"
+        f"Arguments non reconnus : {argv!r}"
+    )
+
+
+def main_nu_sweep() -> None:
+    """
+    Point d'entrée du protocole nu_sweep_v1 (dataset à balayage de viscosité).
+
+    Étapes :
+    1. charger la configuration globale (bloc `config.nu_sweep`),
+    2. fixer la graine globale,
+    3. sauvegarder le snapshot de configuration (`config_snapshot_nu_sweep.json`),
+    4. exécuter le pilote `run_nu_sweep_pilot` et sauvegarder son rapport
+       (`nu_sweep_pilot_report.json`) ; ABANDON si tous les niveaux du
+       ladder échouent (aucun split n'est alors généré),
+    5. générer et sauvegarder train / val / test
+       (`{train,val,test}_data_nu_sweep.npz` dans `outputs/data`),
+    6. écrire les rapports par split
+       (`data_generation_report_nu_sweep_{split}.json`) et le résumé global
+       (`nu_sweep_generation_summary.json`) dans `outputs/logs`.
+
+    Usage : python main_generate_data.py --protocol nu_sweep
+    """
+    (
+        build_and_save_split_from_config_nu_sweep,
+        summarize_dataset_nu_sweep,
+        nu_sweep_dataset_sanity_checks,
+        evaluate_nu_sweep_gates,
+        run_nu_sweep_pilot,
+    ) = _load_nu_sweep_builder_symbols()
+
+    print_section("Protocole nu_sweep_v1 : chargement de la configuration")
+    config = get_default_config(create_dirs=True)
+    ns = config.nu_sweep
+
+    print("Configuration chargée avec succès.")
+    print(f"- Projet               : {config.project_name}")
+    print(f"- Version du dataset   : {ns.dataset_version}")
+    print(f"- Viscosités nu        : {list(ns.nu_values)}")
+    print(f"- Nx / dt / save_every : {ns.Nx} / {ns.dt} / {ns.save_every}")
+    print(f"- L / T / schéma       : {ns.L} / {ns.T} / {ns.time_scheme}")
+    print(f"- Splits               : train={ns.n_train}, val={ns.n_val}, test={ns.n_test}")
+    print(f"- Dossier de données   : {config.paths.data_dir}")
+    print(f"- Dossier de logs      : {config.paths.logs_dir}")
+
+    print_section("Protocole nu_sweep_v1 : reproductibilité")
+    seed = int(config.reproducibility.seed)
+    set_global_seed(seed)
+    print(f"Seed globale fixée à : {seed}")
+
+    print_section("Protocole nu_sweep_v1 : snapshot de configuration")
+    config_json_path = Path(config.paths.logs_dir) / "config_snapshot_nu_sweep.json"
+    save_json(config_json_path, config.to_dict())
+    print(f"Configuration sauvegardée dans : {config_json_path}")
+
+    print_section("Protocole nu_sweep_v1 : pilote (ladder + portes numériques)")
+    pilot_report = run_nu_sweep_pilot(config, verbose=True)
+    pilot_report_path = Path(config.paths.logs_dir) / "nu_sweep_pilot_report.json"
+    save_json(pilot_report_path, pilot_report)
+    print(f"Rapport du pilote sauvegardé dans : {pilot_report_path}")
+    print(f"- overall_pass  : {pilot_report['overall_pass']}")
+    print(f"- niveau retenu : {pilot_report['selected_level']}")
+    if not pilot_report["overall_pass"]:
+        print_section("Protocole nu_sweep_v1 : ABANDON")
+        print("Toutes les portes ont échoué à tous les niveaux du ladder :")
+        print("aucun split n'est généré (voir le rapport du pilote).")
+        raise SystemExit(1)
+
+    print_section("Protocole nu_sweep_v1 : génération des splits train / val / test")
+    split_reports = {}
+    for split, seed_offset in [("train", 0), ("val", 1), ("test", 2)]:
+        rng = np.random.default_rng(seed + seed_offset)
+        print_section(f"Génération du split nu_sweep : {split}")
+
+        dataset = build_and_save_split_from_config_nu_sweep(
+            config=config,
+            split=split,
+            rng=rng,
+            verbose=True,
+        )
+
+        summary = summarize_dataset_nu_sweep(dataset)
+        checks = nu_sweep_dataset_sanity_checks(
+            dataset,
+            nu_values=list(ns.nu_values),
+            target_norm_range=list(ns.target_norm_range),
+        )
+        gates = evaluate_nu_sweep_gates(dataset)
+
+        print("\nRésumé :")
+        for key, value in summary.items():
+            print(f"- {key}: {value}")
+        print("\nSanity checks :")
+        for key, value in checks.items():
+            print(f"- {key}: {value}")
+        print("\nPortes numériques :")
+        print(f"- gates_passed : {gates['gates_passed']} ({gates['checks']})")
+
+        report = {
+            "split": split,
+            "dataset_version": str(ns.dataset_version),
+            "summary": summary,
+            "sanity_checks": checks,
+            "gates": gates,
+        }
+        report_path = Path(config.paths.logs_dir) / f"data_generation_report_nu_sweep_{split}.json"
+        save_json(report_path, report)
+        print(f"\nRapport sauvegardé dans : {report_path}")
+
+        split_reports[split] = {
+            "filename": str(getattr(ns, f"{split}_filename")),
+            "summary": summary,
+            "sanity_checks_all_true": bool(all(checks.values())),
+            "gates_passed": bool(gates["gates_passed"]),
+        }
+
+    print_section("Protocole nu_sweep_v1 : résumé global")
+    generation_summary = {
+        "dataset_version": str(ns.dataset_version),
+        "protocol": str(ns.protocol),
+        "nu_values": list(ns.nu_values),
+        "numerical": {
+            "Nx": int(ns.Nx),
+            "dt": float(ns.dt),
+            "save_every": int(ns.save_every),
+            "L": float(ns.L),
+            "T": float(ns.T),
+            "time_scheme": str(ns.time_scheme),
+        },
+        "splits": {"train": int(ns.n_train), "val": int(ns.n_val), "test": int(ns.n_test)},
+        "pilot": {
+            "overall_pass": bool(pilot_report["overall_pass"]),
+            "selected_level": pilot_report["selected_level"],
+            "n_levels_tested": len(pilot_report["levels"]),
+        },
+        "split_reports": split_reports,
+    }
+    summary_path = Path(config.paths.logs_dir) / "nu_sweep_generation_summary.json"
+    save_json(summary_path, generation_summary)
+    print(f"Résumé global sauvegardé dans : {summary_path}")
+
+    print_section("Terminé")
+    print("La génération du dataset nu_sweep_v1 est terminée :")
+    print(f"- {ns.train_filename}")
+    print(f"- {ns.val_filename}")
+    print(f"- {ns.test_filename}")
+
+
+if __name__ == "__main__":
+    # Dispatch additif du protocole nu_sweep_v1. Sans argument, ce bloc ne
+    # fait rien : le bloc `__main__` legacy de la section 8 ci-dessous exécute
+    # alors main() exactement comme avant. Avec `--protocol nu_sweep`, on
+    # exécute main_nu_sweep() puis on quitte (sys.exit) : le bloc legacy ne
+    # s'exécute pas.
+    _argv = sys.argv[1:]
+    if _argv:
+        _protocol = _parse_protocol_arg(_argv)
+        if _protocol == "nu_sweep":
+            main_nu_sweep()
+            sys.exit(0)
+
+
+# =============================================================================
 # 8. Exécution directe
 # =============================================================================
 

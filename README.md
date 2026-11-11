@@ -28,13 +28,16 @@ ml_datasets.py                # BurgersSnapshot/Pair/TrajectoryDataset + GlobalS
 ml_datasets_experiment_c.py   # nu_sweep_v1 snapshot/window datasets + TargetStandardizer (Experiment C)
 ml_train_supervised.py        # EnergyRegressor training
 ml_train_experiment_c.py      # Experiment C training/eval engine (multi-task MSE, held-out-nu, metrics)
+ml_train_experiment_a_seq.py  # window-A (Architecture A-Sequence) training/eval engine (loss A, held-out-nu z-vs-nuD)
 ml_train_latent.py            # LatentAutoencoder + LatentDynamicsModel + LatentDynamicsAutoencoder training
 ml_evaluate.py                # extraction, regression/correlation/monotonicity metrics +
                               # latent PCA/rank evaluation for Architecture A
 evaluate + identify + compare + visualize entry points:
 main_generate_data.py, main_train_supervised.py, main_train_latent.py, main_evaluate.py,
 main_identify_latent_variable.py, main_compare_z_and_dissipation.py,
-main_visualize_results.py, main_visualize_latent_results.py, main_experiment_c.py
+main_visualize_results.py, main_visualize_latent_results.py, main_experiment_c.py,
+main_experiment_c2.py        # Experiment C2: long temporal windows (c3_window, w=5/25/50)
+main_train_latent_seq.py     # window-A: latent dynamics autoencoder on w-snapshot windows (Step 5)
 physics_candidates.py         # ~37 candidate observables + ranking vs a latent scalar
 utils_plotting.py             # figures
 outputs/                      # data/ models/ figures/ logs/ (all results committed)
@@ -52,6 +55,11 @@ python main_compare_z_and_dissipation.py  # z vs nu*∫|u_x|² + residual analys
 python main_visualize_results.py / main_visualize_latent_results.py
 python main_experiment_c.py [--variants c1_mlp c2_cnn c3_window] [--protocols standard heldout_nu]
                               # Experiment C: supervised separability baseline on nu_sweep_v1
+                              #   options: --window-sizes W [W...] (c3_window), --tag TAG
+python main_experiment_c2.py  # Experiment C2: c3_window with w = 5 25 50, tag "c2"
+python main_train_latent_seq.py [--protocols standard heldout_nu] [--window-size 25] [--tag aseq]
+                              # window-A (Step 5): latent dynamics autoencoder on w=25 windows,
+                              #   verdict z-vs-nuD in outputs/logs/experiment_a_seq_summary_{tag}.json
 ```
 
 ## Data
@@ -282,7 +290,7 @@ Reports: `outputs/logs/nu_sweep_pilot_report.json`, `nu_sweep_generation_summary
 - **Verdict: GO** for training the next latent generation on nu_sweep_v1, with
   between-strata / held-out-ν evaluation protocols (within a stratum νD ≡ D by construction).
 
-## Step 4 — Experiment C: supervised separability baseline on nu_sweep_v1 (implemented, validated, production run pending)
+## Step 4 — Experiment C: supervised separability baseline on nu_sweep_v1 (implemented, validated, production runs done — results below)
 
 Goal: before any latent model, measure how well each observable is predictable from the
 states, and whether νD is separable from D **in model space** (not just in correlation tables).
@@ -333,14 +341,274 @@ states, and whether νD is separable from D **in model space** (not just in corr
   held-out-ν, νD remains confounded with D in model space and the next architecture must
   inject ν explicitly (ν-conditioned input, or a physics head predicting dE/dt = −νD).
 
+### Step 4 — results (production runs, seed 42)
+
+6 runs (3 variants × 2 protocols) completed; early stopping at 12–18 epochs (best_epoch 2–8;
+train loss keeps dropping while val loss plateaus → mild overfit, not undertraining).
+Artifacts: `outputs/models/experiment_c/{variant}_{protocol}/` (best_model.pt, metrics JSON +
+long CSV, standardizers.json). Caveat: `outputs/logs/experiment_c_summary.json` reflects only
+the LAST invocation (c2_cnn c3_window) — the c1_mlp verdict below was recomputed from its
+per-run metrics files with `main_experiment_c.evaluate_identifiability`.
+
+| variant | R² E (std) | R² νD (std) | Spearman νD (std) | r_holdout ν=0.01 | rel_rmse holdout | beats ν-oracle | verdict νD |
+|---|---|---|---|---|---|---|---|
+| c1_mlp | 0.980 | 0.346 | 0.670 | 0.783 | 2.13 | no | **NOT IDENTIFIABLE** |
+| c2_cnn | 0.989 | 0.403 | 0.662 | 0.746 | 2.14 | no | **NOT IDENTIFIABLE** |
+| c3_window | 0.994 | 0.638 | 0.806 | 0.874 | 1.97 | no | **NOT IDENTIFIABLE** |
+
+- Sanity: R²_E ≥ 0.98 for all variants (pipeline OK); the "other targets ≥ 0.95" gate fails on
+  νD (R² 0.30–0.64) — νD is the hard target by design. CNN variants predict D / TV / max|u_x|
+  well (R² 0.94–0.96, Spearman ≥ 0.96).
+- In-distribution, **C3 ≫ C2 > C1 on νD** (R² 0.64 / 0.40 / 0.35) → the ν signal lives in the
+  temporal window (consistent with dE/dt = −νD). νD is most predictable late (t=2: R² 0.88,
+  c3 standard) and per-trajectory aggregated (R² 0.76, Spearman 0.90).
+- Held-out ν=0.01: R² collapses (negative) for all variants but **Spearman stays 0.75–0.87**
+  (c3 best, 0.874); the per-ν median ratio pred_νD/pred_D is flat (~0.07–0.13) instead of
+  tracking ν → at unseen ν the νD head behaves as ≈ c·D head with c ≈ 0.1: **νD remains
+  confounded with D in model space**; a 5-snapshot window (0.08 s) does not let the model
+  infer ν.
+- In the standard protocol, C3's ratio does track ν ({0.017, 0.054, 0.152} vs
+  {0.01, 0.05, 0.2}) — the two heads are partially separated in-distribution only.
+- Metric caveat: at ν=0.01, νD is heavy-tailed (shocks, max|u_x| up to 91) so even the
+  ν-oracle mean predictor has rel_rmse_mean = 1.54 there; the rel_rmse_fail = 0.5 threshold
+  is unachievable at ν=0.01 for ANY predictor. The informative held-out criteria are
+  r_holdout (0.75–0.87, above the 0.5 fail line) and beats_nu_oracle (failed:
+  1.97–2.14 vs 1.54–1.56).
+- **Conclusion: νD is NOT identifiable from states by these models at held-out ν**
+  (NOT IDENTIFIABLE ×3). The next architecture must inject ν explicitly (ν-conditioned
+  input) or use a physics head over a longer temporal context (predict dE/dt = −νD along a
+  trajectory, not over a 0.08 s window).
+
+### Step 4 — Experiment C2: long temporal windows (implemented, RUN — results below)
+
+Hypothesis (from the C results): the information about ν in the data is **primarily
+temporal** — dE/dt = −νD is exact in nu_sweep_v1, so a window measures νD directly,
+ν-agnostically, via −ΔE/Δt. C2 tests whether ν becomes identifiable when the temporal
+context grows: **w = 5 (0.08 s, C3 baseline), w = 25 (0.48 s), w = 50 (0.98 s = T/2)**,
+same dataset, same 5 targets, same protocols (standard + heldout_nu), same metrics.
+
+- Implementation (minimal, reuses all of Experiment C — `window_size` was already wired
+  end-to-end: window dataset → c3_window model → metrics → verdict):
+  - `config.py`: +`ExperimentCConfig.window_sizes` (None = `[window_size]`, historical
+    behavior unchanged).
+  - `main_experiment_c.py`: `run_experiment_c(..., window_sizes=None, tag="")`; runs are
+    labeled `c3_window_w{w}` when several window sizes are given (historical `c3_window_*`
+    runs are never overwritten; with the default single size the label stays `c3_window`);
+    `--window-sizes W [W...]` and `--tag TAG` CLI options (tag suffixes the global reports,
+    e.g. `experiment_c_summary_c2.json`).
+  - `main_experiment_c2.py` (new, thin wrapper): `python main_experiment_c2.py`
+    = c3_window × w ∈ {5, 25, 50} × {standard, heldout_nu}, tag "c2".
+  - No change to `ml_datasets_experiment_c.py` / `ml_models_experiment_c.py` /
+    `ml_train_experiment_c.py`.
+- Outputs: `outputs/models/experiment_c/c3_window_w{w}_{protocol}/` and
+  `outputs/logs/experiment_c_summary_c2.json` (verdict per w) + config snapshot.
+- Validated without torch: py_compile + stub-torch smoke tests (run labels, summary
+  structure, verdicts, tag filenames, backward-compatible labels, CLI) + window datasets
+  on the real npz for w = 5/25/50 (lengths 97/77/52 windows per trajectory, shapes
+  (w, 1024), window covers [t−w+1, t]).
+- Run (torch env):
+
+      python main_experiment_c2.py                          # w = 5 25 50, both protocols
+      python main_experiment_c2.py --window-sizes 25 50     # subset
+
+- Expected behavior (predictions to falsify): R² νD standard ↑ with w (0.64 → ~0.85–0.92);
+  r_holdout stays high (0.87 → ~0.90–0.95); **R² νD and rel_rmse at held-out ν=0.01 should
+  improve with w** (from −0.65 / 1.97 toward positive / ~1.0–1.3, vs ν-oracle 1.54); the
+  per-ν ratio pred(νD)/pred(D) at ν=0.01 should approach 0.01. Caveats: secant bias grows
+  with w (E(t) convex when shocks form; targets are at the window's final time), fewer
+  windows per trajectory (97 → 52), no early-time coverage for large w (first window ends
+  at t = (w−1)·0.02; t=0 subset empty for all window variants, t=1/t=2 common to all w).
+- Decision rule: if held-out R² νD at ν=0.01 clearly improves with w and beats ν-oracle →
+  νD is identifiable from dynamics alone → next: trajectory-level models (sequence over the
+  101 snapshots) and latent models with sequence input. If w=50 ≈ w=5 held-out → the temporal
+  hypothesis is falsified; the blocker is the dataset (3 ν strata, held-out at the extreme)
+  → next: finer ν sweep (6–8 log-spaced values in [0.005, 0.3]) before any new architecture.
+  Companion control (cheap, same day): ν-conditioned c2/c3 (ν as input) = upper bound —
+  with ν given and D predicted at R² 0.96, νD should be near-perfect even held-out.
+
+### Step 4 — Experiment C2 results (production runs, seed 42)
+
+6 runs (w ∈ {5, 25, 50} × {standard, heldout_nu}). Note: `experiment_c_summary_c2.json`
+reflects the LAST invocation (w = 25, 50) — the w=5 verdicts below were recomputed from the
+`c3_window_w5_*` metrics files. **Early stopping on all 6 runs (12–38 epochs, patience=10)**:
+val loss stops improving for 10 consecutive epochs while train loss keeps dropping
+(overfit / val noise) — the best checkpoint (argmin val) is kept, so this is the mechanism
+working as designed, not an error. Larger w → later stopping and much lower val loss
+(w=5: 0.066/0.102 → w=25: 0.018/0.015 → w=50: 0.014/0.006, standard/heldout).
+
+| w | R² νD std | Spearman νD std | holdout ν=0.01: R² / Spearman / rel_rmse | r_holdout | beats ν-oracle | ratio pred νD/pred D @ν=0.01 holdout | formal verdict |
+|---|---|---|---|---|---|---|---|
+| 5 | 0.638 | 0.806 | −0.65 / 0.874 / 1.97 | 0.874 | no | 0.109 | NOT IDENTIFIABLE |
+| 25 | 0.944 | 0.984 | **+0.69 / 0.973 / 0.79** | 0.973 | **yes** | 0.048 | NOT IDENTIFIABLE (threshold artifact) |
+| 50 | 0.944 | 0.989 | **+0.69 / 0.978 / 0.68** | 0.978 | **yes** | 0.051 | NOT IDENTIFIABLE (threshold artifact) |
+
+- **Temporal hypothesis CONFIRMED**: w=25 ≈ w=50 ≫ w=5 (diminishing returns beyond w=25:
+  secant bias + fewer windows per trajectory). In-distribution per-ν R² νD at w=50:
+  {ν=0.01: 0.949, ν=0.05: 0.913, ν=0.2: 0.993}; the ratio pred νD/pred D tracks ν almost
+  exactly in standard ({0.0105, 0.0458, 0.1995} vs {0.01, 0.05, 0.2}) — the two heads are
+  separated in-distribution.
+- Held-out ν=0.01 at w ≥ 25: R² +0.69, Spearman 0.97, calibration slope 0.86–0.89 (≈1), and the
+  model **beats the ν-oracle** (rel_rmse 0.68–0.79 vs 1.54). Strikingly, D and max|u_x|
+  collapse held-out (R² 0.26–0.28, OOD shocks) while νD survives (0.69) → the temporal channel
+  −ΔE/Δt (dE/dt = −νD exact) carries νD in a ν-agnostic way even when the spatial shock
+  features fail.
+- The formal verdict stays NOT IDENTIFIABLE only through threshold artifacts at ν=0.01:
+  rel_rmse_fail = 0.5 is unreachable there (ν-oracle = 1.54, heavy tail) and
+  ρ = rel_rmse_holdout / rel_rmse_indist = 2.1–2.2 > 2 only because in-distribution rel_rmse
+  dropped to 0.26–0.42. **Substantively: νD is largely identifiable from dynamics alone at
+  held-out ν once w ≥ 25** (residual gap: median ratio at ν=0.01 still ~5× the true 0.01;
+  rel_rmse 0.68–0.79 vs in-distribution 0.26–0.42).
+- Sanity: R²_E ≥ 0.99 everywhere; sanity_ok=False only because νD R² = 0.944 sits just under
+  the 0.95 gate.
+- **Next**: (1) trajectory-level sequence model over the full 101 snapshots (w=50 covers only
+  t ≥ 0.98; per-trajectory aggregation already reaches R² 0.82–0.84 held-out); (2) cheap
+  companion controls: ν-conditioned model (ceiling) and recalibrated verdict thresholds
+  (fail line relative to the ν-oracle instead of the absolute 0.5); (3) only if a residual
+  held-out gap remains: finer ν sweep near 0.01.
+
+## Step 5 — Architecture A-Sequence (implemented — results: NOT IDENTIFIABLE)
+
+Motivation (from C2): w=25 ≈ w=50 ≫ w=5, and at w ≥ 25 νD is largely identifiable from
+dynamics alone at held-out ν (R² 0.69, Spearman 0.97, calibration slope 0.87, beats ν-oracle).
+Question: can a **latent** model discover an interpretable z aligned with νD, tested at
+held-out ν? Input: **window = 25 snapshots** (0.48 s), the C2 sweet spot.
+
+1. **Reuse of Architecture A (additive only)** — keep `LatentDynamicsAutoencoder`
+   (`ml_models.py`), `latent_dynamics_autoencoder_total_loss` (`ml_losses.py`), the training
+   loop (`ml_train_latent.py`), and the evaluation stack (`ml_evaluate.py` extractor + latent
+   PCA rank, `main_identify_latent_variable.py` candidate rankings). Implemented as:
+   - pluggable encoder: `LatentDynamicsAutoencoder(..., encoder=None, output_dim=None)`
+     (`ml_models.py`) — None → `MLPEncoder` as today; otherwise use the given module
+     (forward signature `forward(u_t, u_tp)` and output keys
+     `h_t / h_tp_pred / reconstruction / h_tp / z_t / z_tp` unchanged); `output_dim`
+     defaults to `input_dim`, else the decoder reconstructs `output_dim` values;
+   - new `NuSweepWindowPairDataset` (in `ml_datasets_experiment_c.py`): items = pairs of
+     consecutive stride-1 windows (window ending at t, window ending at t+1) + snapshots
+     u_t / u_tp (u_t = reconstruction target, final snapshot of the first window) +
+     metadata incl. `nu_dissipation_t`; `nu_filter` for heldout_nu; 76 pairs per trajectory
+     at w=25 → ~45.6k pairs in train;
+   - factory `build_window_dynamics_autoencoder(window_size, nx, ...)`
+     (`ml_models_experiment_c.py`): `Conv1DEncoder(in_channels=w)` + shared trunk →
+     `LatentDynamicsAutoencoder(encoder=..., output_dim=nx)`; decoder MLP latent → Nx=1024;
+   - new training engine `ml_train_experiment_a_seq.py` (loss A unchanged via
+     `latent_dynamics_autoencoder_total_loss`, early stopping + best checkpoint, z-vs-νD
+     evaluation reusing the Experiment C subset machinery + ν-oracle baseline, verdict
+     `verdict_a_seq`) and new entry point `main_train_latent_seq.py` (CLI
+     `--protocols/--window-size/--tag`) → models in
+     `outputs/models/latent_dynamics_autoencoder_seq/window_w{w}_{protocol}/`, summary in
+     `outputs/logs/experiment_a_seq_summary_{tag}.json`; config `ExperimentASeqConfig`
+     (`config.py`).
+2. **Losses kept unchanged**: L = λ_rec·MSE(û_t, u_t) + λ_pred·MSE(h_{t+1}^pred, h_{t+1})
+   + λ_mono·mean(relu(z_{t+1}−z_t)²) + λ_var·Σ_j relu(min_var − Var(h_j)), same weights as A
+   (λ_rec=λ_pred=λ_mono=1, λ_var=0.01, min_var=0.01). Latent prediction step = 0.02 s
+   (stride-1 windows: window ending at t → window ending at t+1).
+3. **Temporal window encoding**: reuse `Conv1DEncoder` (`ml_models_experiment_c.py`) with
+   `in_channels=25`, `nx=1024`, conv_channels (16,32,32,64,64), k=5, s=2 → spatial length
+   1024→32, flatten 2048 → trunk → h (latent_dim=8). Time enters as channels (proven in C2);
+   a 2D conv (time × space kernels) is the ablation if channel-as-time underperforms. Windows
+   normalized with the train `GlobalStandardizer` (same as C/C2).
+4. **Held-out-ν evaluation of z**: protocols `standard` + `heldout_nu` (train ν∈{0.05,0.2});
+   z computed per window (attributed to its final time t), evaluated vs νD with the Experiment
+   C subset machinery (`build_eval_subsets`): per-ν (esp. ν=0.01), per-t, per-E(0) quartile,
+   per-trajectory; candidate rankings vs z and each h_j on nu_sweep_v1; latent PCA rank
+   (collapse check); monotone fraction of z (tolerance-based).
+5. **Success criteria** (held-out ν=0.01, z vs νD; supervised C2 w=25 references in parentheses):
+   - r_holdout = Spearman(z, νD) @ν=0.01 ≥ **0.8** (C2: 0.973);
+   - R² held-out = affine R²(νD ~ z) @ν=0.01 ≥ **0.5** (C2: 0.69);
+   - calibration slope a of νD ≈ a·z + b @ν=0.01 in **[0.5, 2.0]**, ideally ≈ 1 (C2: 0.886);
+   - plus: beats ν-oracle rel_rmse; structural (from A): effective rank ≥ 3, rec RMSE ≤ 0.15,
+     monotone fraction ≥ 0.95 (tolerance), pred/rec loss ratio ∈ [0.01, 100].
+   - Verdict: **IDENTIFIABLE** if all three held-out criteria + structural pass; **PARTIAL** if
+     r_holdout ≥ 0.8 but R² or slope fails; **NOT IDENTIFIABLE** if r_holdout < 0.5.
+6. **snapshot-A vs window-A vs trajectory-A** (predictions from C/C2):
+   - *snapshot-A* (A as-is on nu_sweep_v1, MLP encoder on one snapshot): control. C1/C2 say a
+     single snapshot cannot separate νD from D → expect z ≈ shock complex: r_holdout moderate
+     (0.7–0.85, via D ranking) but R² held-out ≤ 0 and slope off (magnitude wrong).
+   - *window-A* (w=25, proposed): expect r_holdout ≥ 0.9, R² held-out 0.5–0.7, slope 0.7–1.3;
+     minimal changes (reuses `Conv1DEncoder`), C2 sweet spot.
+   - *trajectory-A* (full 101-snapshot sequence, window encoder + temporal conv/GRU): upper
+     bound; gains mainly early-time coverage (w=50 only covers t ≥ 0.98) and temporal
+     smoothing — C2 says w=50 ≈ w=25, so held-out νD gain over window-A should be small;
+     higher cost (params, data, train time).
+   - **Recommendation: implement window-A (w=25) first**, snapshot-A as cheap control,
+     trajectory-A only if window-A leaves an early-time gap.
+
+Caveats: on legacy fixed-ν data, A's z was a weak static mix (corr(z,D) = −0.135) and all h
+dims were static IC labels; on nu_sweep_v1 mass0 ≈ 0 removes the mass label. The multi-ν
+dataset + held-out protocol is what makes z's identity testable. Risk: the mono hinge +
+predictor may again yield a generic decay scalar (E-like) rather than νD — the held-out νD
+criteria (rank + magnitude + calibration) are exactly what discriminates.
+
+Run (torch env):
+
+```
+python main_train_latent_seq.py                          # w=25, protocols standard + heldout_nu, tag "aseq"
+python main_train_latent_seq.py --window-size 50         # ablation w=50
+python main_train_latent_seq.py --protocols standard     # standard only (no cross-protocol verdict)
+python main_train_latent_seq.py --tag aseq_w50 --window-size 50
+```
+
+Read `outputs/logs/experiment_a_seq_summary_aseq.json` → `verdict.window_a`:
+`r_holdout`, `r2_holdout_nu001`, `calibration_slope_nu001`, `beats_nu_oracle`,
+`effective_rank`, `reconstruction_rmse_test`, `monotone_fraction_test`, `structural_ok`,
+`verdict` (IDENTIFIABLE / PARTIAL / NOT IDENTIFIABLE), plus per-run metrics JSON/CSV under
+`outputs/logs/` and checkpoints under `outputs/models/latent_dynamics_autoencoder_seq/`.
+
+### Results (runs tag "aseq", w=25 and w=50, both protocols)
+
+Per-run metrics: `outputs/models/latent_dynamics_autoencoder_seq/window_w{w}_{protocol}/metrics_window_a_*.json`.
+Cross-protocol verdict recomputed post-hoc with the real `verdict_a_seq` in
+`outputs/logs/experiment_a_seq_verdict_computed.json` (the summary file only reflects the
+last single-protocol CLI run, which overwrote it):
+
+| run (heldout_nu, strate ν=0.01) | r_holdout Spearman(z,νD) | Pearson | rel_rmse (ν-oracle) | verdict |
+|---|---|---|---|---|
+| window-A w=25 | **0.249** | 0.302 | 1.675 (1.429) | **NOT IDENTIFIABLE** |
+| window-A w=50 | **−0.035** | −0.013 | 2.971 (1.219) | **NOT IDENTIFIABLE** |
+
+Structural (protocole standard): effective rank 6–7 (≥ 3 OK, no collapse), rec RMSE
+0.153–0.169 (w=50 above the 0.15 threshold), monotone fraction 0.80–0.90 (< 0.95) →
+`structural_ok = False`. Reference: supervised C2 on the same windows reaches Spearman
+0.973, R² 0.69 @ν=0.01 held-out. w=50 *standard* reaches Spearman 0.61 @ν=0.01
+in-distribution but collapses at held-out ν.
+
+**Interpretation**: the νD information IS present in the w=25 window (C2 proves it), but
+loss A (rec + pred + mono hinge + variance floor) does not select νD as z — z behaves as a
+generic monotone decay scalar (E-like; monotone fraction 0.8–0.9) and its ranking of νD
+collapses at held-out ν. No latent collapse (rank 6–7), so this is an identification/loss
+failure, not a collapse artifact. Metric caveat: raw `r2`/`calibration_slope` are in z's
+arbitrary latent units; the calibrated R² is Pearson² (0.09 @ν=0.01, w=25 held-out) — the
+verdict is driven by scale-invariant Spearman anyway.
+
+### Next experiments (ranked)
+
+1. **Per-dim h evaluation of the existing checkpoints** (no retraining, immediate):
+   Spearman/Pearson of each h_j vs νD @ held-out ν=0.01 — checks whether νD lives in an
+   h dim rather than in the scalar z.
+2. **Physics-informed z (self-supervised)**: add λ_z·MSE(z, −ΔE/Δt) with −ΔE/Δt estimated
+   from the window itself, (E(t)−E(t−w))/(w·dt) = νD exactly by the energy identity —
+   anchors z to νD without labels, reuses all window-A infra. **Main next run.**
+3. **Supervised z-head (ceiling)**: λ_z·MSE(z, νD standardized) on top of loss A — tests
+   whether the bottleneck preserves the νD information that C2 reads.
+4. **snapshot-A control** (A as-is on nu_sweep_v1): cheap, confirms single-snapshot
+   insufficiency (expected from C1/C2).
+5. **ν-conditioned models / finer ν sweep near 0.01**: dataset-level options if a residual
+   held-out gap remains after 2–3.
+
 ## Open questions
 
 - ~~Does z track dissipation or the whole gradient/shock complex?~~ **Answered (Architecture A +
   nu_sweep_v1 audit): the old dissipation-like z was collapse-induced; on nu_sweep_v1 the νD/D
   degeneracy is broken globally (Spearman 0.642 vs 1.0 legacy) but NOT within a ν stratum, and
   D / max|u_x| / TV remain one shock complex (0.95–0.99).**
-- Is νD separable from D by a *trained model* at held-out ν? → **Experiment C (Step 4),
-  implemented, run pending** — verdict per variant in `outputs/logs/experiment_c_summary.json`.
+- Is νD separable from D by a *trained model* at held-out ν? → **Answered (Experiment C +
+  C2): NO at w=5 (all variants NOT IDENTIFIABLE; νD head ≈ c·D head, c ≈ 0.1), but YES largely
+  once the temporal window is long enough — C2: w=25/50 give R² νD = +0.69 and Spearman 0.97
+  at held-out ν=0.01, beating the ν-oracle, via the ν-agnostic channel dE/dt = −νD.**
+- Can a *latent* z (Architecture A loss) align with νD at held-out ν? → **Answered (window-A,
+  Step 5): NO — w=25 r_holdout = 0.249, w=50 = −0.035 (NOT IDENTIFIABLE); z is a generic
+  monotone decay scalar, no collapse (rank 6–7). The νD info is in the window but loss A
+  does not select it. Next: per-dim h eval, then physics-informed z (z ≈ −ΔE/Δt).**
 - Which loss term creates the structured z — predictor or monotonicity hinge? (A0 ablation, not run)
 - ~~Do residual h dims encode shock position / Fourier content once collapse is fixed?~~ **Partially:
   with the collapse fixed, all h dims are static IC labels (shock_location, Fourier amps, spectral

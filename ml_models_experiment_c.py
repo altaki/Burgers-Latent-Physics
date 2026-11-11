@@ -474,7 +474,70 @@ def build_experiment_c_model(
 
 
 # =============================================================================
-# 8. Bloc de test minimal (smoke test CPU)
+# 8. Window-A (Architecture A-Sequence) : autoencodeur de dynamique latente
+#    avec encodeur convolutif sur fenêtre temporelle (w snapshots = w canaux)
+# =============================================================================
+
+def build_window_dynamics_autoencoder(
+    window_size: int,
+    nx: int,
+    latent_dim: int = 8,
+    conv_channels: Sequence[int] = (16, 32, 32, 64, 64),
+    kernel_size: int = 5,
+    conv_stride: int = 2,
+    trunk_dims: Sequence[int] = (256,),
+    decoder_hidden_dims: Sequence[int] = (64, 128),
+    predictor_hidden_dims: Sequence[int] = (64, 64),
+    scalar_head_hidden_dims: Sequence[int] = (),
+    activation: str = "relu",
+    dropout: float = 0.0,
+) -> Any:
+    """
+    Construit le modèle window-A (Step 5) : `LatentDynamicsAutoencoder`
+    (Architecture A, ml_models.py) avec un encodeur `Conv1DEncoder` prenant
+    la fenêtre (B, window_size, Nx) — le temps entre comme canaux, comme dans
+    la variante c3_window de l'Experiment C/C2.
+
+    - encodeur : Conv1DEncoder(in_channels=window_size, nx=nx) -> h (B, latent_dim)
+    - décodeur : MLPDecoder(h -> u_t final de la fenêtre, output_dim=nx)
+    - prédicteur latent + tête scalaire z : identiques à Architecture A.
+
+    La loss utilisée à l'entraînement est `latent_dynamics_autoencoder_total_loss`
+    (ml_losses.py, inchangée) ; la cible de reconstruction est le snapshot final
+    de la fenêtre (fourni par `NuSweepWindowPairDataset` sous la clé "u_t").
+    """
+    models_module = _load_models_module()
+    if window_size < 1:
+        raise ValueError("`window_size` doit être >= 1.")
+    encoder = Conv1DEncoder(
+        in_channels=int(window_size),
+        nx=int(nx),
+        latent_dim=latent_dim,
+        channels=conv_channels,
+        kernel_size=kernel_size,
+        stride=conv_stride,
+        trunk_dims=trunk_dims,
+        activation=activation,
+        dropout=dropout,
+    )
+    return models_module.LatentDynamicsAutoencoder(
+        input_dim=int(nx),
+        latent_dim=latent_dim,
+        encoder=encoder,
+        output_dim=int(nx),
+        decoder_hidden_dims=decoder_hidden_dims,
+        predictor_hidden_dims=predictor_hidden_dims,
+        activation=activation,
+        dropout=dropout,
+        use_scalar_head=True,
+        scalar_head_hidden_dims=scalar_head_hidden_dims,
+        positive_scalar_output=False,
+        residual_predictor=False,
+    )
+
+
+# =============================================================================
+# 9. Bloc de test minimal (smoke test CPU)
 # =============================================================================
 
 if __name__ == "__main__":

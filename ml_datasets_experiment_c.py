@@ -479,6 +479,131 @@ class NuSweepWindowDataset(Dataset):
 
 
 # =============================================================================
+# 5b. Dataset de paires de fenêtres temporelles (window-A / A-Sequence)
+# =============================================================================
+
+class NuSweepWindowPairDataset(Dataset):
+    """
+    Paires de fenêtres temporelles consécutives (stride configurable, 1 par
+    défaut) pour window-A (Architecture A-Sequence, Step 5).
+
+    Chaque item renvoie :
+    - window_t  : tenseur (window_size, Nx) — fenêtre finissant à t
+    - window_tp : tenseur (window_size, Nx) — fenêtre finissant à t+stride
+    - u_t       : tenseur (Nx,) — snapshot FINAL de window_t (cible de
+                  reconstruction du décodeur)
+    - u_tp      : tenseur (Nx,) — snapshot final de window_tp
+    - métadonnées : nu, time_t, time_tp, trajectory_index, time_index_t,
+      time_index_tp, energy_t, dissipation_t, nu_dissipation_t, energy0
+    """
+
+    def __init__(
+        self,
+        dataset: Dict[str, Any] | str | Path,
+        window_size: int = 25,
+        stride: int = 1,
+        normalize: bool = True,
+        standardizer: Optional[Any] = None,
+        nu_filter: Optional[Sequence[float]] = None,
+        return_metadata: bool = True,
+    ) -> None:
+        self._datasets_module = _load_datasets_module()
+        datasets_module = self._datasets_module
+
+        if isinstance(dataset, (str, Path)):
+            dataset = datasets_module.load_dataset_npz(dataset)
+        dataset = datasets_module.validate_dataset_dict(dataset)
+
+        self.dataset = dataset
+        self.states = np.asarray(dataset["states"], dtype=np.float32)
+        self.times = np.asarray(dataset["times"], dtype=np.float32)
+        self.n_traj, self.n_times, self.nx = self.states.shape
+        self.dx = float(np.asarray(dataset["dx"]).item())
+
+        if window_size < 1:
+            raise ValueError("`window_size` doit être >= 1.")
+        if window_size > self.n_times:
+            raise ValueError("`window_size` doit être <= n_times.")
+        if stride < 1:
+            raise ValueError("`stride` doit être >= 1.")
+        if window_size + stride > self.n_times:
+            raise ValueError("`window_size + stride` doit être <= n_times.")
+        self.window_size = int(window_size)
+        self.stride = int(stride)
+
+        self.energy = np.asarray(dataset["energy"], dtype=np.float32)
+        self.dissipation = np.asarray(dataset["dissipation"], dtype=np.float32)
+        if "dissipation_physical" in dataset:
+            self.nu_dissipation = np.asarray(dataset["dissipation_physical"], dtype=np.float32)
+        else:
+            nu = (
+                np.asarray(dataset["nu_values"], dtype=np.float32)
+                if "nu_values" in dataset
+                else np.zeros(self.n_traj, dtype=np.float32)
+            )
+            self.nu_dissipation = (nu[:, None] * self.dissipation).astype(np.float32)
+
+        self.nu_values = (
+            np.asarray(dataset["nu_values"], dtype=np.float32)
+            if "nu_values" in dataset
+            else np.zeros(self.n_traj, dtype=np.float32)
+        )
+        self.energy0 = (
+            np.asarray(dataset["energy0"], dtype=np.float32)
+            if "energy0" in dataset
+            else np.asarray(dataset["energy"][:, 0], dtype=np.float32)
+        )
+
+        self.normalize = normalize
+        if normalize:
+            self.standardizer = standardizer or datasets_module.fit_global_standardizer(self.states)
+            self.states = self.standardizer.transform(self.states).astype(np.float32)
+        else:
+            self.standardizer = standardizer
+
+        self.nu_filter = None if nu_filter is None else tuple(float(v) for v in nu_filter)
+        self.nu_mask = _build_nu_mask(self.nu_values, self.nu_filter)
+        # paires (i, t) : fenêtre [t-w+1, t] et fenêtre suivante [t-w+1+stride, t+stride]
+        self.index_map = [
+            (i, t)
+            for i in range(self.n_traj)
+            for t in range(self.window_size - 1, self.n_times - self.stride)
+            if self.nu_mask[i]
+        ]
+        self.return_metadata = return_metadata
+
+    def __len__(self) -> int:
+        return len(self.index_map)
+
+    def __getitem__(self, idx: int) -> Dict[str, Any]:
+        traj_idx, time_idx = self.index_map[idx]
+        next_idx = time_idx + self.stride
+        t0 = time_idx - self.window_size + 1
+        t0p = next_idx - self.window_size + 1
+
+        item: Dict[str, Any] = {
+            "window_t": self._datasets_module.to_float_tensor(self.states[traj_idx, t0:time_idx + 1]),
+            "window_tp": self._datasets_module.to_float_tensor(self.states[traj_idx, t0p:next_idx + 1]),
+            "u_t": self._datasets_module.to_float_tensor(self.states[traj_idx, time_idx]),
+            "u_tp": self._datasets_module.to_float_tensor(self.states[traj_idx, next_idx]),
+        }
+
+        if self.return_metadata:
+            item["nu"] = float(self.nu_values[traj_idx])
+            item["time_t"] = float(self.times[time_idx])
+            item["time_tp"] = float(self.times[next_idx])
+            item["trajectory_index"] = int(traj_idx)
+            item["time_index_t"] = int(time_idx)
+            item["time_index_tp"] = int(next_idx)
+            item["energy_t"] = float(self.energy[traj_idx, time_idx])
+            item["dissipation_t"] = float(self.dissipation[traj_idx, time_idx])
+            item["nu_dissipation_t"] = float(self.nu_dissipation[traj_idx, time_idx])
+            item["energy0"] = float(self.energy0[traj_idx])
+
+        return item
+
+
+# =============================================================================
 # 6. Constructeur des splits train / val / test
 # =============================================================================
 

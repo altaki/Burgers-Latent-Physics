@@ -1,0 +1,118 @@
+{
+  "experiment": "experiment_c",
+  "tag": "c2",
+  "dataset_version": "nu_sweep_v1",
+  "seed": 42,
+  "variants": [
+    "c3_window"
+  ],
+  "window_sizes": [
+    25,
+    50
+  ],
+  "protocols": [
+    "standard",
+    "heldout_nu"
+  ],
+  "runs": {
+    "c3_window_w25": {
+      "standard": {
+        "output_dir": "outputs\\models\\experiment_c\\c3_window_w25_standard",
+        "window_size": 25,
+        "checkpoint_path": "outputs\\models\\experiment_c\\c3_window_w25_standard\\best_model.pt",
+        "metrics_json": "outputs\\models\\experiment_c\\c3_window_w25_standard\\metrics_c3_window_standard.json",
+        "metrics_csv": "outputs\\models\\experiment_c\\c3_window_w25_standard\\metrics_long_c3_window_standard.csv",
+        "best_epoch": 21,
+        "best_val_loss": 0.018402075047894016,
+        "stopped_early": true
+      },
+      "heldout_nu": {
+        "output_dir": "outputs\\models\\experiment_c\\c3_window_w25_heldout_nu",
+        "window_size": 25,
+        "checkpoint_path": "outputs\\models\\experiment_c\\c3_window_w25_heldout_nu\\best_model.pt",
+        "metrics_json": "outputs\\models\\experiment_c\\c3_window_w25_heldout_nu\\metrics_c3_window_heldout_nu.json",
+        "metrics_csv": "outputs\\models\\experiment_c\\c3_window_w25_heldout_nu\\metrics_long_c3_window_heldout_nu.csv",
+        "best_epoch": 13,
+        "best_val_loss": 0.014827707454247715,
+        "stopped_early": true
+      }
+    },
+    "c3_window_w50": {
+      "standard": {
+        "output_dir": "outputs\\models\\experiment_c\\c3_window_w50_standard",
+        "window_size": 50,
+        "checkpoint_path": "outputs\\models\\experiment_c\\c3_window_w50_standard\\best_model.pt",
+        "metrics_json": "outputs\\models\\experiment_c\\c3_window_w50_standard\\metrics_c3_window_standard.json",
+        "metrics_csv": "outputs\\models\\experiment_c\\c3_window_w50_standard\\metrics_long_c3_window_standard.csv",
+        "best_epoch": 17,
+        "best_val_loss": 0.01360491061445851,
+        "stopped_early": true
+      },
+      "heldout_nu": {
+        "output_dir": "outputs\\models\\experiment_c\\c3_window_w50_heldout_nu",
+        "window_size": 50,
+        "checkpoint_path": "outputs\\models\\experiment_c\\c3_window_w50_heldout_nu\\best_model.pt",
+        "metrics_json": "outputs\\models\\experiment_c\\c3_window_w50_heldout_nu\\metrics_c3_window_heldout_nu.json",
+        "metrics_csv": "outputs\\models\\experiment_c\\c3_window_w50_heldout_nu\\metrics_long_c3_window_heldout_nu.csv",
+        "best_epoch": 28,
+        "best_val_loss": 0.006216591848239589,
+        "stopped_early": true
+      }
+    }
+  },
+  "sanity": {
+    "c3_window_w25": {
+      "r2_energy": 0.9952204658048266,
+      "r2_other_targets": {
+        "nu_dissipation": 0.9435684667304145,
+        "dissipation": 0.9619594975523431,
+        "tv": 0.9802282914339953,
+        "max_abs_ux": 0.9681909943472953
+      },
+      "r2_others_min": 0.9435684667304145,
+      "sanity_ok": false
+    },
+    "c3_window_w50": {
+      "r2_energy": 0.9950886325109539,
+      "r2_other_targets": {
+        "nu_dissipation": 0.944261947511678,
+        "dissipation": 0.9624301476795425,
+        "tv": 0.9742514367231213,
+        "max_abs_ux": 0.9610972285546489
+      },
+      "r2_others_min": 0.944261947511678,
+      "sanity_ok": false
+    }
+  },
+  "identifiability": {
+    "c3_window_w25": {
+      "target": "nu_dissipation",
+      "r_holdout": 0.9730036211999394,
+      "rel_rmse_holdout_nu001": 0.7949506877805557,
+      "rel_rmse_indist_max": 0.3562955088341599,
+      "rho": 2.2311555101598843,
+      "equiv_r2_pred_D_vs_pred_nuD": -6763.132438909411,
+      "baseline_nu_oracle_rel_rmse_nu001": 1.4360496918998513,
+      "beats_nu_oracle": true,
+      "verdict": "NOT IDENTIFIABLE"
+    },
+    "c3_window_w50": {
+      "target": "nu_dissipation",
+      "r_holdout": 0.977555011927801,
+      "rel_rmse_holdout_nu001": 0.6826514428487234,
+      "rel_rmse_indist_max": 0.3255987343397894,
+      "rho": 2.0966034902835946,
+      "equiv_r2_pred_D_vs_pred_nuD": -8074.696952008245,
+      "baseline_nu_oracle_rel_rmse_nu001": 1.2257883735515254,
+      "beats_nu_oracle": true,
+      "verdict": "NOT IDENTIFIABLE"
+    }
+  },
+  "thresholds": {
+    "r_holdout_min": 0.8,
+    "rho_max": 2.0,
+    "equiv_max": 0.99,
+    "r_holdout_fail": 0.5,
+    "rel_rmse_fail": 0.5
+  }
+}

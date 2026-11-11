@@ -1,0 +1,56 @@
+{
+  "best_epoch": 66,
+  "best_val_loss": 0.006541339619085193,
+  "best_model_path": "outputs\\models\\latent_dynamics_autoencoder\\best_latent_dynamics_autoencoder.pt",
+  "last_model_path": "outputs\\models\\latent_dynamics_autoencoder\\last_latent_dynamics_autoencoder.pt",
+  "device": "cpu",
+  "seed": 42,
+  "batch_size": 64,
+  "learning_rate": 0.001,
+  "num_epochs": 100,
+  "normalize": true,
+  "stride": 1,
+  "loss_config": {
+    "reconstruction_weight": 1.0,
+    "prediction_weight": 1.0,
+    "monotonicity_weight": 1.0,
+    "variance_weight": 0.01,
+    "min_latent_variance": 0.01,
+    "monotonicity_mode": "squared_hinge",
+    "prediction_mode": "mse"
+  },
+  "model_summary": {
+    "model_name": "LatentDynamicsAutoencoder",
+    "total_parameters": 55961,
+    "trainable_parameters": 55961
+  },
+  "train_dataset_description": {
+    "n_trajectories": 500,
+    "n_times": 101,
+    "nx": 128,
+    "time_min": 0.0,
+    "time_max": 2.0,
+    "mean_initial_energy": 0.5,
+    "mean_final_energy": 0.326493345065895,
+    "ic_distribution": {
+      "fourier": 154,
+      "gaussian_bumps": 166,
+      "random_smooth": 180
+    }
+  },
+  "val_dataset_description": {
+    "n_trajectories": 100,
+    "n_times": 101,
+    "nx": 128,
+    "time_min": 0.0,
+    "time_max": 2.0,
+    "mean_initial_energy": 0.5,
+    "mean_final_energy": 0.31443039386553645,
+    "ic_distribution": {
+      "fourier": 37,
+      "gaussian_bumps": 33,
+      "random_smooth": 30
+    }
+  },
+  "training_mode": "latent_dynamics_autoencoder"
+}

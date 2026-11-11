@@ -12,6 +12,9 @@ Depuis la racine du projet :
     python main_experiment_c.py                          # toutes les variantes x protocoles
     python main_experiment_c.py --variants c1_mlp        # première run de production
     python main_experiment_c.py --variants c1_mlp --protocols standard heldout_nu
+    python main_experiment_c.py --variants c3_window --window-sizes 5 25 50 --tag c2
+                                                         # Experiment C2 : fenêtres temporelles longues
+    python main_experiment_c2.py                         # idem, via le point d'entrée dédié C2
 
 Pour chaque variante (c1_mlp / c2_cnn / c3_window) et chaque protocole
 (standard / heldout_nu), le script :
@@ -209,6 +212,8 @@ def run_experiment_c(
     config: Any,
     variants: Optional[Sequence[str]] = None,
     protocols: Optional[Sequence[str]] = None,
+    window_sizes: Optional[Sequence[int]] = None,
+    tag: str = "",
     verbose: bool = True,
 ) -> Dict[str, Any]:
     """
@@ -222,18 +227,34 @@ def run_experiment_c(
         Variantes à exécuter (None = `config.experiment_c.variants`).
     protocols : séquence de str ou None
         Protocoles à exécuter (None = `config.experiment_c.protocols`).
+    window_sizes : séquence d'entiers ou None
+        Tailles de fenêtre testées pour la variante "c3_window" (Experiment C2,
+        ex. [5, 25, 50]). Sans effet sur c1_mlp / c2_cnn.
+        None = `config.experiment_c.window_sizes`, ou `[window_size]` si None.
+        Si plusieurs tailles sont données, chaque run est étiqueté
+        "c3_window_w{w}" (les runs historiques "c3_window_*" ne sont pas écrasés) ;
+        avec la taille par défaut seule, le label reste "c3_window".
+    tag : str
+        Suffixe ajouté aux noms des rapports globaux (ex. tag="c2" ->
+        `experiment_c_summary_c2.json`). Vide = noms historiques.
 
     Retour
     ------
     Dict[str, Any]
         Résumé complet, aussi sauvegardé dans
-        `outputs/logs/experiment_c_summary.json`.
+        `outputs/logs/experiment_c_summary[_tag].json`.
     """
     mt = _load_train_module()
 
     ec = config.experiment_c
     variants = list(variants) if variants is not None else list(ec.variants)
     protocols = list(protocols) if protocols is not None else list(ec.protocols)
+    if window_sizes is None:
+        window_sizes = list(ec.window_sizes) if ec.window_sizes is not None else [ec.window_size]
+    window_sizes = [int(w) for w in window_sizes]
+    for w in window_sizes:
+        if w < 1:
+            raise ValueError(f"Les tailles de fenêtre doivent être >= 1 (reçu {w}).")
 
     data_dir = Path(config.paths.data_dir)
     train_path = data_dir / ec.train_filename
@@ -247,18 +268,35 @@ def run_experiment_c(
         print_section("Expérience C : baseline supervisée de séparabilité (nu_sweep_v1)")
         print(f"- variantes  : {variants}")
         print(f"- protocoles : {protocols}")
+        print(f"- fenêtres   : {window_sizes} (c3_window uniquement)")
+        print(f"- tag        : {tag or '(aucun)'}")
         print(f"- données    : {data_dir}")
         print(f"- sorties    : {models_root}")
 
-    runs: Dict[str, Dict[str, Any]] = {v: {} for v in variants}
-
+    # Expansion en runs (label, variant, window_size, protocol). Seule la
+    # variante c3_window utilise window_size ; avec plusieurs tailles, les
+    # labels explicites c3_window_w{w} évitent d'écraser les runs historiques.
+    run_specs: List[tuple] = []
     for variant in variants:
-        for protocol in protocols:
-            output_dir = ensure_dir(models_root / f"{variant}_{protocol}")
-            if verbose:
-                print_section(f"Variante {variant} | protocole {protocol}")
+        if variant == "c3_window":
+            single_default = (len(window_sizes) == 1 and window_sizes[0] == ec.window_size)
+            for w in window_sizes:
+                label = variant if single_default else f"{variant}_w{w}"
+                for protocol in protocols:
+                    run_specs.append((label, variant, w, protocol))
+        else:
+            for protocol in protocols:
+                run_specs.append((variant, variant, ec.window_size, protocol))
 
-            results = mt.train_and_evaluate_experiment_c(
+    runs: Dict[str, Dict[str, Any]] = {}
+
+    for label, variant, w, protocol in run_specs:
+        runs.setdefault(label, {})
+        output_dir = ensure_dir(models_root / f"{label}_{protocol}")
+        if verbose:
+            print_section(f"Run {label} | variante {variant} | fenêtre w={w} | protocole {protocol}")
+
+        results = mt.train_and_evaluate_experiment_c(
                 variant=variant,
                 train_path=train_path,
                 val_path=val_path,
@@ -266,7 +304,7 @@ def run_experiment_c(
                 output_dir=output_dir,
                 protocol=protocol,
                 heldout_nu_values=ec.heldout_nu_values,
-                window_size=ec.window_size,
+                window_size=w,
                 batch_size=ec.batch_size,
                 learning_rate=ec.learning_rate,
                 num_epochs=ec.num_epochs,
@@ -289,16 +327,17 @@ def run_experiment_c(
                 verbose=verbose,
             )
 
-            runs[variant][protocol] = {
-                "output_dir": str(output_dir),
-                "checkpoint_path": results["checkpoint_path"],
-                "metrics_json": str(output_dir / f"metrics_{variant}_{protocol}.json"),
-                "metrics_csv": str(output_dir / f"metrics_long_{variant}_{protocol}.csv"),
-                "best_epoch": results["best_epoch"],
-                "best_val_loss": results["best_val_loss"],
-                "stopped_early": results["stopped_early"],
-                "results": results,
-            }
+        runs[label][protocol] = {
+            "output_dir": str(output_dir),
+            "window_size": w,
+            "checkpoint_path": results["checkpoint_path"],
+            "metrics_json": str(output_dir / f"metrics_{variant}_{protocol}.json"),
+            "metrics_csv": str(output_dir / f"metrics_long_{variant}_{protocol}.csv"),
+            "best_epoch": results["best_epoch"],
+            "best_val_loss": results["best_val_loss"],
+            "stopped_early": results["stopped_early"],
+            "results": results,
+        }
 
     # sanity + verdict d'identifiabilité (nécessite les deux protocoles)
     thresholds = {
@@ -312,51 +351,56 @@ def run_experiment_c(
     sanity: Dict[str, Any] = {}
     identifiability: Dict[str, Any] = {}
 
-    for variant in variants:
-        if "standard" in runs[variant]:
-            sanity[variant] = evaluate_sanity(
-                runs[variant]["standard"]["results"],
+    for label in runs:
+        if "standard" in runs[label]:
+            sanity[label] = evaluate_sanity(
+                runs[label]["standard"]["results"],
                 ec.sanity_r2_energy,
                 ec.sanity_r2_other_targets,
             )
-        if "standard" in runs[variant] and "heldout_nu" in runs[variant]:
-            identifiability[variant] = evaluate_identifiability(
-                runs[variant]["standard"]["results"],
-                runs[variant]["heldout_nu"]["results"],
+        if "standard" in runs[label] and "heldout_nu" in runs[label]:
+            identifiability[label] = evaluate_identifiability(
+                runs[label]["standard"]["results"],
+                runs[label]["heldout_nu"]["results"],
                 thresholds,
                 ec.heldout_nu_values,
             )
 
     summary: Dict[str, Any] = {
         "experiment": "experiment_c",
+        "tag": tag or None,
         "dataset_version": "nu_sweep_v1",
         "seed": int(config.reproducibility.seed),
         "variants": variants,
+        "window_sizes": window_sizes,
         "protocols": protocols,
         "runs": {
-            v: {p: {k: val for k, val in info.items() if k != "results"}
-                for p, info in runs[v].items()}
-            for v in variants
+            label: {p: {k: val for k, val in info.items() if k != "results"}
+                    for p, info in runs[label].items()}
+            for label in runs
         },
         "sanity": sanity,
         "identifiability": identifiability,
         "thresholds": thresholds,
     }
 
-    summary_path = logs_dir / ec.summary_filename
+    def _tagged(filename: str) -> str:
+        return filename if not tag else filename.replace(".json", f"_{tag}.json")
+
+    summary_path = logs_dir / _tagged(ec.summary_filename)
     save_json(summary_path, summary)
-    save_json(logs_dir / ec.config_snapshot_filename, config.to_dict())
+    save_json(logs_dir / _tagged(ec.config_snapshot_filename), config.to_dict())
 
     if verbose:
         print_section("Résumé de l'expérience C")
-        for variant in variants:
-            if variant in sanity:
-                s = sanity[variant]
-                print(f"- {variant:10s} sanity_ok={s['sanity_ok']} "
+        for label in runs:
+            if label in sanity:
+                s = sanity[label]
+                print(f"- {label:18s} sanity_ok={s['sanity_ok']} "
                       f"(R2 E={s['r2_energy']:.4f}, min autres={s['r2_others_min']:.4f})")
-            if variant in identifiability:
-                d = identifiability[variant]
-                print(f"- {variant:10s} verdict nu*D = {d['verdict']:16s} "
+            if label in identifiability:
+                d = identifiability[label]
+                print(f"- {label:18s} verdict nu*D = {d['verdict']:16s} "
                       f"(r_holdout={d['r_holdout']:.3f}, rho={d['rho']:.2f}, "
                       f"equiv={d['equiv_r2_pred_D_vs_pred_nuD']:.4f}, "
                       f"beats_nu_oracle={d['beats_nu_oracle']})")
@@ -390,6 +434,15 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         choices=["standard", "heldout_nu"],
         help="Protocoles à exécuter (défaut: tous, depuis la config).",
     )
+    parser.add_argument(
+        "--window-sizes", nargs="*", type=int, default=None, metavar="W",
+        help="Tailles de fenêtre pour c3_window (Experiment C2, ex: --window-sizes 5 25 50). "
+             "Défaut: config.experiment_c.window_sizes, ou [window_size]. Sans effet sur c1_mlp/c2_cnn.",
+    )
+    parser.add_argument(
+        "--tag", type=str, default="",
+        help="Suffixe des rapports globaux (ex: --tag c2 -> experiment_c_summary_c2.json).",
+    )
     return parser.parse_args(argv)
 
 
@@ -402,6 +455,8 @@ def main(argv: Optional[Sequence[str]] = None) -> Dict[str, Any]:
         config,
         variants=args.variants,
         protocols=args.protocols,
+        window_sizes=args.window_sizes,
+        tag=args.tag,
         verbose=True,
     )
 

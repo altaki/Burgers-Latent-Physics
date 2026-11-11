@@ -1,0 +1,118 @@
+{
+  "project_name": "burgers_latent_physics",
+  "experiment_name": "baseline_v1",
+  "paths": {
+    "output_root": "outputs",
+    "data_dir": "outputs\\data",
+    "models_dir": "outputs\\models",
+    "figures_dir": "outputs\\figures",
+    "logs_dir": "outputs\\logs"
+  },
+  "pde": {
+    "L": 6.283185307179586,
+    "Nx": 128,
+    "nu": 0.05,
+    "T": 2.0,
+    "dt": 0.0002,
+    "save_every": 100,
+    "boundary_condition": "periodic",
+    "spatial_scheme": "finite_difference",
+    "time_scheme": "rk4"
+  },
+  "dataset": {
+    "n_train": 500,
+    "n_val": 100,
+    "n_test": 100,
+    "ic_types": [
+      "fourier",
+      "gaussian_bumps",
+      "random_smooth"
+    ],
+    "max_fourier_mode": 3,
+    "fourier_amplitude_scale": 0.5,
+    "n_gaussian_bumps": 2,
+    "spectral_decay": 3.0,
+    "train_filename": "train_data.npz",
+    "val_filename": "val_data.npz",
+    "test_filename": "test_data.npz"
+  },
+  "normalization": {
+    "enabled": true,
+    "method": "global_standardization",
+    "eps": 1e-08
+  },
+  "ml": {
+    "latent_dim": 8,
+    "batch_size": 64,
+    "num_epochs": 100,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0,
+    "optimizer_name": "adam",
+    "device": "cpu",
+    "train_fraction": 1.0
+  },
+  "losses": {
+    "reconstruction_weight": 1.0,
+    "prediction_weight": 1.0,
+    "monotonicity_weight": 1.0,
+    "variance_weight": 0.01,
+    "min_latent_variance": 0.001,
+    "monotonicity_mode": "squared_hinge"
+  },
+  "evaluation": {
+    "n_plot_trajectories": 5,
+    "save_figures": true,
+    "print_every": 10,
+    "matplotlib_fontsize": 11
+  },
+  "reproducibility": {
+    "seed": 42,
+    "deterministic_torch": false
+  },
+  "nu_sweep": {
+    "nu_values": [
+      0.01,
+      0.05,
+      0.2
+    ],
+    "target_norm_range": [
+      0.5,
+      2.0
+    ],
+    "zero_mean": true,
+    "Nx": 1024,
+    "dt": 0.0001,
+    "save_every": 200,
+    "L": 6.283185307179586,
+    "T": 2.0,
+    "time_scheme": "rk4",
+    "n_train": 600,
+    "n_val": 150,
+    "n_test": 150,
+    "train_filename": "train_data_nu_sweep.npz",
+    "val_filename": "val_data_nu_sweep.npz",
+    "test_filename": "test_data_nu_sweep.npz",
+    "dataset_version": "nu_sweep_v1",
+    "protocol": "nu_sweep_v1: nu in {0.01,0.05,0.20} stratifie; target_l2_norm log-uniform(0.5,2.0); zero_mean=True pour toutes les familles de CI; Nx=1024, dt=1e-4, save_every=200, RK4, L=2pi, T=2.0, 101 snapshots",
+    "pilot_n_per_nu": 20,
+    "pilot_seed": 1234,
+    "pilot_ladder": [
+      [
+        1024,
+        0.0001,
+        200
+      ],
+      [
+        2048,
+        2.5e-05,
+        800
+      ]
+    ],
+    "gate_monotone_frac": 0.99,
+    "gate_monotone_atol_rel": 1e-08,
+    "gate_pass_fraction": 0.95,
+    "gate_max_abs_u": 5.0,
+    "gate_dedt_rel_err": 0.01,
+    "gate_max_cell_peclet": 2.0
+  }
+}

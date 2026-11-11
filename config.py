@@ -41,7 +41,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, asdict, field
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 
 # -----------------------------------------------------------------------------
@@ -419,6 +419,12 @@ class ExperimentCConfig:
     # Fenêtre temporelle de la variante c3_window.
     window_size: int = 5
 
+    # Tailles de fenêtre testées pour c3_window (Experiment C2 : ex. [5, 25, 50]).
+    # None = [window_size] (comportement historique : une seule fenêtre, labels
+    # de runs inchangés). Si plusieurs tailles sont données, les runs sont
+    # étiquetés c3_window_w{w} pour ne pas écraser les runs historiques.
+    window_sizes: Optional[List[int]] = None
+
     # Fichiers de données d'entrée (dataset nu_sweep_v1).
     train_filename: str = "train_data_nu_sweep.npz"
     val_filename: str = "val_data_nu_sweep.npz"
@@ -463,6 +469,81 @@ class ExperimentCConfig:
 
 
 # -----------------------------------------------------------------------------
+# 8b. Configuration de l'Experiment A-Sequence (window-A, Step 5)
+# -----------------------------------------------------------------------------
+
+@dataclass
+class ExperimentASeqConfig:
+    """
+    Architecture A-Sequence (window-A) : `LatentDynamicsAutoencoder` (Architecture A)
+    avec un encodeur Conv1D sur fenêtre de `window_size` snapshots (le temps entre
+    comme canaux, comme c3_window), sur le dataset nu_sweep_v1.
+
+    - protocoles : "standard" (train 3 strates de nu) et "heldout_nu"
+      (train nu = `heldout_nu_values`, évaluation sur nu=0.01 du test) ;
+    - évaluation de z vs nu*D avec les sous-ensembles d'Experiment C ;
+    - verdict (Step 5) sur le protocole heldout_nu, strate nu=0.01 :
+      IDENTIFIABLE si r_holdout >= r_holdout_min ET R²(holdout) >= r2_holdout_min
+      ET pente de calibration dans [slope_min, slope_max] ET bat la baseline
+      nu_oracle ET critères structurels (rang, rec, monotonie) ;
+      NOT IDENTIFIABLE si r_holdout < r_holdout_fail ; PARTIAL sinon.
+    """
+
+    protocols: List[str] = field(default_factory=lambda: ["standard", "heldout_nu"])
+    heldout_nu_values: List[float] = field(default_factory=lambda: [0.05, 0.20])
+
+    # Fenêtre temporelle (w snapshots = w canaux de l'encodeur Conv1D).
+    window_size: int = 25
+
+    # Hyperparamètres d'entraînement.
+    batch_size: int = 256
+    learning_rate: float = 1.0e-3
+    num_epochs: int = 200
+    patience: int = 10
+    weight_decay: float = 0.0
+
+    # Architecture (encodeur Conv1D + décodeur/prédicteur/tête comme Architecture A).
+    latent_dim: int = 8
+    conv_channels: List[int] = field(default_factory=lambda: [16, 32, 32, 64, 64])
+    kernel_size: int = 5
+    conv_stride: int = 2
+    trunk_dims: List[int] = field(default_factory=lambda: [256])
+    decoder_hidden_dims: List[int] = field(default_factory=lambda: [64, 128])
+    predictor_hidden_dims: List[int] = field(default_factory=lambda: [64, 64])
+    scalar_head_hidden_dims: List[int] = field(default_factory=list)
+    activation: str = "relu"
+    dropout: float = 0.0
+
+    # Poids de la loss Architecture A (identiques à ceux de l'Experiment A).
+    reconstruction_weight: float = 1.0
+    prediction_weight: float = 1.0
+    monotonicity_weight: float = 1.0
+    variance_weight: float = 0.01
+    min_latent_variance: float = 0.01
+    monotonicity_mode: str = "squared_hinge"
+    prediction_mode: str = "mse"
+
+    # Instants évalués séparément (sous-ensembles "t=...").
+    eval_times: List[float] = field(default_factory=lambda: [1.0, 2.0])
+
+    # Sorties.
+    models_subdir: str = "latent_dynamics_autoencoder_seq"
+    summary_filename: str = "experiment_a_seq_summary.json"
+    config_snapshot_filename: str = "experiment_a_seq_config_snapshot.json"
+
+    # Seuils du verdict (strates nu=0.01 held-out, z vs nu*D).
+    r_holdout_min: float = 0.8      # Spearman(z, nuD) @ nu=0.01 held-out
+    r2_holdout_min: float = 0.5     # R² affine(nuD ~ z) @ nu=0.01 held-out
+    slope_min: float = 0.5          # pente de calibration nuD ~ a*z + b
+    slope_max: float = 2.0
+    r_holdout_fail: float = 0.5     # en dessous -> NOT IDENTIFIABLE
+    # Critères structurels (hérités d'Architecture A).
+    rank_min: int = 3               # rang effectif de h (PCA)
+    rec_rmse_max: float = 0.15      # RMSE de reconstruction sur le test
+    monotone_min: float = 0.95      # fraction de paires z_{t+1} <= z_t
+
+
+# -----------------------------------------------------------------------------
 # 9. Configuration globale du projet
 # -----------------------------------------------------------------------------
 
@@ -494,6 +575,7 @@ class ProjectConfig:
     reproducibility: ReproConfig = field(default_factory=ReproConfig)
     nu_sweep: NuSweepConfig = field(default_factory=NuSweepConfig)
     experiment_c: ExperimentCConfig = field(default_factory=ExperimentCConfig)
+    experiment_a_seq: ExperimentASeqConfig = field(default_factory=ExperimentASeqConfig)
 
     def create_directories(self) -> None:
         """
@@ -577,3 +659,5 @@ if __name__ == "__main__":
     print("experiment_c variants :", cfg.experiment_c.variants)
     print("experiment_c protocols :", cfg.experiment_c.protocols)
     print("experiment_c heldout_nu_values :", cfg.experiment_c.heldout_nu_values)
+    print("experiment_c window_size :", cfg.experiment_c.window_size)
+    print("experiment_c window_sizes :", cfg.experiment_c.window_sizes)

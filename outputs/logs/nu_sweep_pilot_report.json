@@ -1,0 +1,51 @@
+{
+  "pilot_seed": 1234,
+  "pilot_n_per_nu": 20,
+  "nu_values": [
+    0.01,
+    0.05,
+    0.2
+  ],
+  "levels": [
+    {
+      "level": 1,
+      "Nx": 1024,
+      "dt": 0.0001,
+      "save_every": 200,
+      "n_trajectories": 60,
+      "gates": {
+        "n_trajectories": 60,
+        "dt_saved": 0.02,
+        "pass_fraction": 1.0,
+        "gate_pass_fraction": 0.95,
+        "mean_monotone_fraction": 1.0,
+        "min_monotone_fraction": 1.0,
+        "gate_monotone_frac": 0.99,
+        "gate_monotone_atol_rel": 1e-08,
+        "max_abs_u": 2.0225011096479792,
+        "gate_max_abs_u": 5.0,
+        "median_dedt_rel_err": 0.004630452241852181,
+        "gate_dedt_rel_err": 0.01,
+        "checks": {
+          "all_finite": true,
+          "monotone_pass_fraction_ok": true,
+          "max_abs_u_ok": true,
+          "dedt_rel_err_ok": true
+        },
+        "gates_passed": true,
+        "diagnostics": {
+          "max_cell_peclet": 0.9053355476041035,
+          "gate_max_cell_peclet": 2.0,
+          "cell_peclet_ok": true
+        }
+      },
+      "mean_final_energy_by_nu": {
+        "nu=0.01": 0.4519775636011404,
+        "nu=0.05": 0.34377118206405166,
+        "nu=0.2": 0.1992018810398546
+      }
+    }
+  ],
+  "selected_level": 1,
+  "overall_pass": true
+}

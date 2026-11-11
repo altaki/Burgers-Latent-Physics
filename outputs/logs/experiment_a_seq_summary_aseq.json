@@ -1,0 +1,31 @@
+{
+  "experiment": "experiment_a_seq",
+  "tag": "aseq",
+  "dataset_version": "nu_sweep_v1",
+  "seed": 42,
+  "window_size": 25,
+  "protocols": [
+    "standard"
+  ],
+  "runs": {
+    "standard": {
+      "output_dir": "outputs\\models\\latent_dynamics_autoencoder_seq\\window_w25_standard",
+      "window_size": 25,
+      "checkpoint_path": "outputs\\models\\latent_dynamics_autoencoder_seq\\window_w25_standard\\best_model.pt",
+      "best_epoch": 55,
+      "best_val_loss": 0.020008561498926658,
+      "stopped_early": true
+    }
+  },
+  "verdict": {},
+  "thresholds": {
+    "r_holdout_min": 0.8,
+    "r2_holdout_min": 0.5,
+    "slope_min": 0.5,
+    "slope_max": 2.0,
+    "r_holdout_fail": 0.5,
+    "rank_min": 3,
+    "rec_rmse_max": 0.15,
+    "monotone_min": 0.95
+  }
+}

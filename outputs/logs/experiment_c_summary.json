@@ -1,0 +1,110 @@
+{
+  "experiment": "experiment_c",
+  "dataset_version": "nu_sweep_v1",
+  "seed": 42,
+  "variants": [
+    "c2_cnn",
+    "c3_window"
+  ],
+  "protocols": [
+    "standard",
+    "heldout_nu"
+  ],
+  "runs": {
+    "c2_cnn": {
+      "standard": {
+        "output_dir": "outputs\\models\\experiment_c\\c2_cnn_standard",
+        "checkpoint_path": "outputs\\models\\experiment_c\\c2_cnn_standard\\best_model.pt",
+        "metrics_json": "outputs\\models\\experiment_c\\c2_cnn_standard\\metrics_c2_cnn_standard.json",
+        "metrics_csv": "outputs\\models\\experiment_c\\c2_cnn_standard\\metrics_long_c2_cnn_standard.csv",
+        "best_epoch": 2,
+        "best_val_loss": 0.15360260992086563,
+        "stopped_early": true
+      },
+      "heldout_nu": {
+        "output_dir": "outputs\\models\\experiment_c\\c2_cnn_heldout_nu",
+        "checkpoint_path": "outputs\\models\\experiment_c\\c2_cnn_heldout_nu\\best_model.pt",
+        "metrics_json": "outputs\\models\\experiment_c\\c2_cnn_heldout_nu\\metrics_c2_cnn_heldout_nu.json",
+        "metrics_csv": "outputs\\models\\experiment_c\\c2_cnn_heldout_nu\\metrics_long_c2_cnn_heldout_nu.csv",
+        "best_epoch": 2,
+        "best_val_loss": 0.14617469106717865,
+        "stopped_early": true
+      }
+    },
+    "c3_window": {
+      "standard": {
+        "output_dir": "outputs\\models\\experiment_c\\c3_window_standard",
+        "checkpoint_path": "outputs\\models\\experiment_c\\c3_window_standard\\best_model.pt",
+        "metrics_json": "outputs\\models\\experiment_c\\c3_window_standard\\metrics_c3_window_standard.json",
+        "metrics_csv": "outputs\\models\\experiment_c\\c3_window_standard\\metrics_long_c3_window_standard.csv",
+        "best_epoch": 8,
+        "best_val_loss": 0.06564192580763263,
+        "stopped_early": true
+      },
+      "heldout_nu": {
+        "output_dir": "outputs\\models\\experiment_c\\c3_window_heldout_nu",
+        "checkpoint_path": "outputs\\models\\experiment_c\\c3_window_heldout_nu\\best_model.pt",
+        "metrics_json": "outputs\\models\\experiment_c\\c3_window_heldout_nu\\metrics_c3_window_heldout_nu.json",
+        "metrics_csv": "outputs\\models\\experiment_c\\c3_window_heldout_nu\\metrics_long_c3_window_heldout_nu.csv",
+        "best_epoch": 2,
+        "best_val_loss": 0.10146275239890998,
+        "stopped_early": true
+      }
+    }
+  },
+  "sanity": {
+    "c2_cnn": {
+      "r2_energy": 0.9891056993884433,
+      "r2_other_targets": {
+        "nu_dissipation": 0.4031604312743222,
+        "dissipation": 0.9498840786786898,
+        "tv": 0.9565905631298472,
+        "max_abs_ux": 0.9431500234610001
+      },
+      "r2_others_min": 0.4031604312743222,
+      "sanity_ok": false
+    },
+    "c3_window": {
+      "r2_energy": 0.9944723948840138,
+      "r2_other_targets": {
+        "nu_dissipation": 0.6378250079988373,
+        "dissipation": 0.9626617325527634,
+        "tv": 0.9823729005167108,
+        "max_abs_ux": 0.9621714168820336
+      },
+      "r2_others_min": 0.6378250079988373,
+      "sanity_ok": false
+    }
+  },
+  "identifiability": {
+    "c2_cnn": {
+      "target": "nu_dissipation",
+      "r_holdout": 0.7463831157239783,
+      "rel_rmse_holdout_nu001": 2.142702729585181,
+      "rel_rmse_indist_max": 1.223866503087307,
+      "rho": 1.7507650746057937,
+      "equiv_r2_pred_D_vs_pred_nuD": -6318.907565959163,
+      "baseline_nu_oracle_rel_rmse_nu001": 1.5575673906700822,
+      "beats_nu_oracle": false,
+      "verdict": "NOT IDENTIFIABLE"
+    },
+    "c3_window": {
+      "target": "nu_dissipation",
+      "r_holdout": 0.8736263784779124,
+      "rel_rmse_holdout_nu001": 1.972233301171612,
+      "rel_rmse_indist_max": 0.7748173186849729,
+      "rho": 2.545417163001602,
+      "equiv_r2_pred_D_vs_pred_nuD": -4154.68056216958,
+      "baseline_nu_oracle_rel_rmse_nu001": 1.53607987134254,
+      "beats_nu_oracle": false,
+      "verdict": "NOT IDENTIFIABLE"
+    }
+  },
+  "thresholds": {
+    "r_holdout_min": 0.8,
+    "rho_max": 2.0,
+    "equiv_max": 0.99,
+    "r_holdout_fail": 0.5,
+    "rel_rmse_fail": 0.5
+  }
+}

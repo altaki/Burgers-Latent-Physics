@@ -1,0 +1,64 @@
+{
+ "experiment": "experiment_a_seq",
+ "note": "verdict computed post-hoc from saved per-run metrics (summary file was overwritten by the last single-protocol CLI run)",
+ "windows": {
+  "w25": {
+   "target": "nu_dissipation",
+   "r_holdout": 0.24923569605875903,
+   "r2_holdout_nu001": -0.3745600467579211,
+   "calibration_slope_nu001": 153519.31205301272,
+   "rel_rmse_holdout_nu001": 1.6750813042850043,
+   "baseline_nu_oracle_rel_rmse_nu001": 1.4287638052743117,
+   "beats_nu_oracle": false,
+   "effective_rank": 6.0,
+   "reconstruction_rmse_test": 0.15568860907183169,
+   "monotone_fraction_test": 0.9,
+   "structural_ok": false,
+   "verdict": "NOT IDENTIFIABLE",
+   "window_size": 25,
+   "heldout_nu001_detail": {
+    "spearman": 0.24923569605875903,
+    "pearson": 0.3020770170736849,
+    "r2_calibrated_pearson2": 0.09125052424413531,
+    "r2_raw": -0.3745600467579211,
+    "rel_rmse_mean": 1.6750813042850043,
+    "nu_oracle_rel_rmse": 1.4287638052743117,
+    "calibration_slope_raw": 153519.31205301272
+   },
+   "structural_detail": {
+    "effective_rank": 6.0,
+    "reconstruction_rmse_test": 0.15568860907183169,
+    "monotone_fraction_test": 0.9
+   }
+  },
+  "w50": {
+   "target": "nu_dissipation",
+   "r_holdout": -0.03455484578122836,
+   "r2_holdout_nu001": -4.958779737650709,
+   "calibration_slope_nu001": -1235.7144718938748,
+   "rel_rmse_holdout_nu001": 2.9706763438841377,
+   "baseline_nu_oracle_rel_rmse_nu001": 1.2247183411555136,
+   "beats_nu_oracle": false,
+   "effective_rank": 6.0,
+   "reconstruction_rmse_test": 0.1529985694957642,
+   "monotone_fraction_test": 0.8904575163398692,
+   "structural_ok": false,
+   "verdict": "NOT IDENTIFIABLE",
+   "window_size": 50,
+   "heldout_nu001_detail": {
+    "spearman": -0.03455484578122836,
+    "pearson": -0.01282577113001708,
+    "r2_calibrated_pearson2": 0.00016450040507957962,
+    "r2_raw": -4.958779737650709,
+    "rel_rmse_mean": 2.9706763438841377,
+    "nu_oracle_rel_rmse": 1.2247183411555136,
+    "calibration_slope_raw": -1235.7144718938748
+   },
+   "structural_detail": {
+    "effective_rank": 6.0,
+    "reconstruction_rmse_test": 0.1529985694957642,
+    "monotone_fraction_test": 0.8904575163398692
+   }
+  }
+ }
+}

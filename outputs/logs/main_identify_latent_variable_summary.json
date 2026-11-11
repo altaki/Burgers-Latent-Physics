@@ -1,0 +1,366 @@
+{
+  "dataset_path": "outputs\\data\\test_data.npz",
+  "models": {
+    "latent_dynamics": {
+      "checkpoint_path": "outputs\\models\\latent_dynamics\\best_latent_dynamics_model.pt",
+      "top5_candidates": [
+        {
+          "candidate": "dissipation_nu_grad2",
+          "pearson": 0.37957623794554707,
+          "spearman": 0.4264900964542776,
+          "abs_pearson": 0.37957623794554707,
+          "abs_spearman": 0.4264900964542776,
+          "direct_rmse": 0.28505946925342907,
+          "direct_mae": 0.2698028748246437,
+          "affine_a": 0.310549696518125,
+          "affine_b": 0.15198510790645905,
+          "affine_rmse": 0.06801967247891129,
+          "affine_mae": 0.05367100883907774,
+          "affine_r2": 0.1440781204128947
+        },
+        {
+          "candidate": "sqrt_dissipation_nu_grad2",
+          "pearson": 0.42017416395685464,
+          "spearman": 0.4264900964542776,
+          "abs_pearson": 0.42017416395685464,
+          "abs_spearman": 0.4264900964542776,
+          "direct_rmse": 0.47584619907695563,
+          "direct_mae": 0.4614859255877601,
+          "affine_a": 0.562410327152382,
+          "affine_b": 0.3867077467676202,
+          "affine_rmse": 0.10915129876390255,
+          "affine_mae": 0.08957186641963324,
+          "affine_r2": 0.176546328056842
+        },
+        {
+          "candidate": "sqrt_gradient_l2",
+          "pearson": 0.43345218092555854,
+          "spearman": 0.4264900964542776,
+          "abs_pearson": 0.43345218092555854,
+          "abs_spearman": 0.4264900964542776,
+          "direct_rmse": 1.302780826233429,
+          "direct_mae": 1.2826982174966954,
+          "affine_a": 1.2152242806648008,
+          "affine_b": 1.3194771470387257,
+          "affine_rmse": 0.22704425488970897,
+          "affine_mae": 0.18661708724516662,
+          "affine_r2": 0.1878807931491232
+        },
+        {
+          "candidate": "log_gradient_l2",
+          "pearson": 0.43634369687238966,
+          "spearman": 0.4264900964542776,
+          "abs_pearson": 0.43634369687238966,
+          "abs_spearman": 0.4264900964542776,
+          "direct_rmse": 0.5764518746780565,
+          "direct_mae": 0.512983883705868,
+          "affine_a": 2.474284514716426,
+          "affine_b": 0.5752293519686896,
+          "affine_rmse": 0.45850352717233156,
+          "affine_mae": 0.37011387051346356,
+          "affine_r2": 0.19039582180026415
+        },
+        {
+          "candidate": "gradient_l2",
+          "pearson": 0.4201741639568548,
+          "spearman": 0.4264900964542776,
+          "abs_pearson": 0.4201741639568548,
+          "abs_spearman": 0.4264900964542776,
+          "direct_rmse": 1.5553617767505925,
+          "direct_mae": 1.4704865508757081,
+          "affine_a": 2.5151754455212445,
+          "affine_b": 1.7294096183963468,
+          "affine_rmse": 0.4881394477369498,
+          "affine_mae": 0.4005775643716612,
+          "affine_r2": 0.17654632805684212
+        }
+      ],
+      "saved_rankings": {
+        "csv_path": "outputs\\logs\\latent_dynamics_candidate_rankings.csv",
+        "json_path": "outputs\\logs\\latent_dynamics_candidate_rankings.json"
+      },
+      "per_trajectory_rankings": {
+        "all_rankings_csv": "outputs\\logs\\latent_dynamics_candidate_rankings_per_trajectory.csv",
+        "best_per_trajectory_csv": "outputs\\logs\\latent_dynamics_best_candidate_per_trajectory.csv",
+        "aggregated_csv": "outputs\\logs\\latent_dynamics_candidate_rankings_aggregated.csv"
+      },
+      "trajectory_consistency": {
+        "n_trajectories_total": 100,
+        "n_trajectories_used": 100,
+        "most_frequent_best_candidate": "dissipation_nu_grad2",
+        "wins_of_most_frequent_candidate": 41,
+        "fraction_trajectories_same_best_candidate": 0.41,
+        "skipped_constant_counts": {
+          "mass": 100,
+          "mean_u": 100,
+          "dominant_mode_index": 76,
+          "l1_norm": 20,
+          "positive_mass": 20,
+          "negative_mass": 20
+        },
+        "min_std_threshold": 1e-10
+      },
+      "top5_aggregated_candidates": [
+        {
+          "candidate": "dissipation_nu_grad2",
+          "wins": 41,
+          "mean_abs_spearman": 0.12327808390595156,
+          "std_abs_spearman": 0.31890644902678267,
+          "mean_abs_pearson": 0.11307304594525161,
+          "std_abs_pearson": 0.30522944278476905,
+          "mean_affine_rmse": 0.00930063037076761,
+          "std_affine_rmse": 0.01482246611164117,
+          "mean_affine_r2": 0.10367820907806928,
+          "std_affine_r2": 0.286436023526009
+        },
+        {
+          "candidate": "skewness",
+          "wins": 12,
+          "mean_abs_spearman": 0.4504408674506262,
+          "std_abs_spearman": 0.4974529237736917,
+          "mean_abs_pearson": 0.4507439307110155,
+          "std_abs_pearson": 0.4921480892516243,
+          "mean_affine_rmse": 0.013913923097749555,
+          "std_affine_rmse": 0.023086146323679137,
+          "mean_affine_r2": 0.4251956876806728,
+          "std_affine_r2": 0.49113817982935215
+        },
+        {
+          "candidate": "energy",
+          "wins": 10,
+          "mean_abs_spearman": 0.9999999999999998,
+          "std_abs_spearman": 0.0,
+          "mean_abs_pearson": 0.9991480568591611,
+          "std_abs_pearson": 0.0007214850251131746,
+          "mean_affine_rmse": 0.0031588267885537583,
+          "std_affine_rmse": 0.002039472898287312,
+          "mean_affine_r2": 0.9982973080120147,
+          "std_affine_r2": 0.0014416220533861536
+        },
+        {
+          "candidate": "linf_norm",
+          "wins": 9,
+          "mean_abs_spearman": 0.9999973330666398,
+          "std_abs_spearman": 5.292031825323516e-06,
+          "mean_abs_pearson": 0.9963416589921332,
+          "std_abs_pearson": 0.006759562096143122,
+          "mean_affine_rmse": 0.0037786472369365984,
+          "std_affine_rmse": 0.0024785403798712738,
+          "mean_affine_r2": 0.9927373162696246,
+          "std_affine_r2": 0.013372124870736019
+        },
+        {
+          "candidate": "abs_moment_p4_0",
+          "wins": 9,
+          "mean_abs_spearman": 0.9897752350538743,
+          "std_abs_spearman": 0.030674294838376776,
+          "mean_abs_pearson": 0.9911283096973946,
+          "std_abs_pearson": 0.012805063391867865,
+          "mean_affine_rmse": 0.007665418296734826,
+          "std_affine_rmse": 0.010080889273566632,
+          "mean_affine_r2": 0.9824810770822544,
+          "std_affine_r2": 0.025191524577139218
+        }
+      ]
+    },
+    "latent_autoencoder": {
+      "checkpoint_path": "outputs\\models\\latent_autoencoder\\best_latent_autoencoder.pt",
+      "top5_candidates": [
+        {
+          "candidate": "shock_location",
+          "pearson": -0.3016320257298233,
+          "spearman": -0.33759716858506145,
+          "abs_pearson": 0.3016320257298233,
+          "abs_spearman": 0.33759716858506145,
+          "direct_rmse": 4.403927745511225,
+          "direct_mae": 3.8939204176539555,
+          "affine_a": -0.6216779368485872,
+          "affine_b": 2.7167568763442227,
+          "affine_rmse": 1.5866513851299293,
+          "affine_mae": 1.287624346719896,
+          "affine_r2": 0.09098187894587684
+        },
+        {
+          "candidate": "positive_mass",
+          "pearson": 0.27826930799404126,
+          "spearman": 0.2827344033011387,
+          "abs_pearson": 0.27826930799404126,
+          "abs_spearman": 0.2827344033011387,
+          "direct_rmse": 1.7759349538957963,
+          "direct_mae": 1.597254995025965,
+          "affine_a": 0.1684832958689917,
+          "affine_b": 0.9720623329610539,
+          "affine_rmse": 0.46956698067974934,
+          "affine_mae": 0.3339663689127285,
+          "affine_r2": 0.07743380777148268
+        },
+        {
+          "candidate": "dominant_mode_index",
+          "pearson": -0.2906648709889535,
+          "spearman": -0.24843536510636224,
+          "abs_pearson": 0.2906648709889535,
+          "abs_spearman": 0.24843536510636224,
+          "direct_rmse": 2.3408576818124023,
+          "direct_mae": 2.0522171517609076,
+          "affine_a": -0.21919542871100403,
+          "affine_b": 1.1573237801618232,
+          "affine_rmse": 0.5826109803427522,
+          "affine_mae": 0.4436310242596569,
+          "affine_r2": 0.08448606722702512
+        },
+        {
+          "candidate": "fourier_amp_k1",
+          "pearson": 0.25261457662252995,
+          "spearman": 0.24196483292801882,
+          "abs_pearson": 0.25261457662252995,
+          "abs_spearman": 0.24196483292801882,
+          "direct_rmse": 23.848446089530523,
+          "direct_mae": 22.250176068200282,
+          "affine_a": 2.738137264515493,
+          "affine_b": 23.51187326979231,
+          "affine_rmse": 8.468082723625137,
+          "affine_mae": 7.396187275684508,
+          "affine_r2": 0.06381412432218014
+        },
+        {
+          "candidate": "mass",
+          "pearson": 0.2783317197156171,
+          "spearman": 0.22114413294921956,
+          "abs_pearson": 0.2783317197156171,
+          "abs_spearman": 0.22114413294921956,
+          "direct_rmse": 1.222262682941283,
+          "direct_mae": 0.999622495780416,
+          "affine_a": 0.3435279558321167,
+          "affine_b": 0.0682261423020086,
+          "affine_rmse": 0.9571879314362663,
+          "affine_mae": 0.6290267799855737,
+          "affine_r2": 0.07746854619985288
+        }
+      ],
+      "saved_rankings": {
+        "csv_path": "outputs\\logs\\latent_autoencoder_candidate_rankings.csv",
+        "json_path": "outputs\\logs\\latent_autoencoder_candidate_rankings.json"
+      }
+    },
+    "latent_dynamics_autoencoder": {
+      "checkpoint_path": "outputs\\models\\latent_dynamics_autoencoder\\best_latent_dynamics_autoencoder.pt",
+      "latent_dim": 8,
+      "per_dim_rankings_csv": "outputs\\logs\\latent_dynamics_autoencoder_candidate_rankings_per_dim.csv",
+      "per_dim_summary_json": "outputs\\logs\\latent_dynamics_autoencoder_per_dim_summary.json",
+      "per_dim_summary": [
+        {
+          "latent_dim": 0,
+          "best_candidate": "negative_mass",
+          "pearson": 0.5267421248453861,
+          "spearman": 0.3997503061806372,
+          "abs_spearman": 0.3997503061806372,
+          "affine_r2": 0.27745726608663246,
+          "affine_rmse": 0.4763717092990822,
+          "var_total": 0.5222239836758071,
+          "between_traj_var_fraction": 0.9468148633155852,
+          "mean_cross_sectional_abs_spearman_best": 0.40062513319083265,
+          "classification": "static_label",
+          "interpretable": false
+        },
+        {
+          "latent_dim": 1,
+          "best_candidate": "shock_location",
+          "pearson": 0.43528331355590744,
+          "spearman": 0.44266987345821956,
+          "abs_spearman": 0.44266987345821956,
+          "affine_r2": 0.1894715630602105,
+          "affine_rmse": 1.4980966157106896,
+          "var_total": 0.45304599273088514,
+          "between_traj_var_fraction": 0.9332169995680459,
+          "mean_cross_sectional_abs_spearman_best": 0.45333817170023955,
+          "classification": "static_label",
+          "interpretable": false
+        },
+        {
+          "latent_dim": 2,
+          "best_candidate": "mean_u",
+          "pearson": -0.8466352218607269,
+          "spearman": -0.5696467650251573,
+          "abs_spearman": 0.5696467650251573,
+          "affine_r2": 0.716791198895164,
+          "affine_rmse": 0.08440732313972255,
+          "var_total": 0.6700702416441604,
+          "between_traj_var_fraction": 0.9595384322523942,
+          "mean_cross_sectional_abs_spearman_best": 0.5751908391598586,
+          "classification": "static_label",
+          "interpretable": true
+        },
+        {
+          "latent_dim": 3,
+          "best_candidate": "negative_mass",
+          "pearson": 0.19569840367010063,
+          "spearman": 0.2416126480921304,
+          "abs_spearman": 0.2416126480921304,
+          "affine_r2": 0.03829786519902556,
+          "affine_rmse": 0.5495845089034668,
+          "var_total": 0.4455189457591308,
+          "between_traj_var_fraction": 0.8816608591063386,
+          "mean_cross_sectional_abs_spearman_best": 0.2646607328122872,
+          "classification": "static_label",
+          "interpretable": false
+        },
+        {
+          "latent_dim": 4,
+          "best_candidate": "fourier_amp_k2",
+          "pearson": 0.27370953532662295,
+          "spearman": 0.2567747401040584,
+          "abs_spearman": 0.2567747401040584,
+          "affine_r2": 0.07491690972871612,
+          "affine_rmse": 5.85029805908518,
+          "var_total": 0.42912444493785423,
+          "between_traj_var_fraction": 0.9091391178793318,
+          "mean_cross_sectional_abs_spearman_best": 0.24857713771377135,
+          "classification": "static_label",
+          "interpretable": false
+        },
+        {
+          "latent_dim": 5,
+          "best_candidate": "spectral_centroid",
+          "pearson": 0.16947747699492025,
+          "spearman": 0.20273894228399766,
+          "abs_spearman": 0.20273894228399766,
+          "affine_r2": 0.028722615208564006,
+          "affine_rmse": 1.090717449459533,
+          "var_total": 0.4588451363750055,
+          "between_traj_var_fraction": 0.8929112801459811,
+          "mean_cross_sectional_abs_spearman_best": 0.1988369636963696,
+          "classification": "static_label",
+          "interpretable": false
+        },
+        {
+          "latent_dim": 6,
+          "best_candidate": "shock_location",
+          "pearson": -0.2952061136005173,
+          "spearman": -0.32754658388630215,
+          "abs_spearman": 0.32754658388630215,
+          "affine_r2": 0.08714664950712148,
+          "affine_rmse": 1.5898501846870305,
+          "var_total": 0.4811605843232997,
+          "between_traj_var_fraction": 0.9318886682421915,
+          "mean_cross_sectional_abs_spearman_best": 0.3257022540121288,
+          "classification": "static_label",
+          "interpretable": false
+        },
+        {
+          "latent_dim": 7,
+          "best_candidate": "shock_location",
+          "pearson": -0.3635192492472272,
+          "spearman": -0.3718084276505635,
+          "abs_spearman": 0.3718084276505635,
+          "affine_r2": 0.13214624457326773,
+          "affine_rmse": 1.5501687164552584,
+          "var_total": 0.435165451559125,
+          "between_traj_var_fraction": 0.851816925094509,
+          "mean_cross_sectional_abs_spearman_best": 0.3995646807788768,
+          "classification": "static_label",
+          "interpretable": false
+        }
+      ]
+    }
+  }
+}

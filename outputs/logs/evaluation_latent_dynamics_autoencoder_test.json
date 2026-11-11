@@ -1,0 +1,111 @@
+{
+  "reconstruction_metrics": {
+    "mse": 0.007638361939927052,
+    "rmse": 0.08739772273879366,
+    "mae": 0.0588238127491855,
+    "max_abs_error": 0.8495113849639893
+  },
+  "latent_prediction_metrics": {
+    "mse": 8.381595161837669e-05,
+    "rmse": 0.009155105221589575,
+    "mae": 0.00542115767034702
+  },
+  "latent_pca": {
+    "n_samples": 10000,
+    "latent_dim": 8,
+    "var_threshold": 0.95,
+    "eigenvalues": [
+      0.9273267388343811,
+      0.7327110171318054,
+      0.6401680111885071,
+      0.43325138092041016,
+      0.4194290041923523,
+      0.33456096053123474,
+      0.2790542244911194,
+      0.1290430873632431
+    ],
+    "effective_rank": 7,
+    "max_offline_residual": 3.686619281768799,
+    "variance_per_dim": [
+      0.5222240090370178,
+      0.4530459940433502,
+      0.670070230960846,
+      0.44551894068717957,
+      0.4291244447231293,
+      0.4588451385498047,
+      0.48116058111190796,
+      0.4351654648780823
+    ],
+    "min_latent_variance": 0.01,
+    "n_dims_above_min_var": 8,
+    "alive_layer2_units": 49
+  },
+  "scalar_monotonicity_pairwise": {
+    "mean_positive_violation": 2.4034083168089637e-08,
+    "max_positive_violation": 4.3213367462158203e-07,
+    "monotone_fraction": 0.6597
+  },
+  "scalar_vs_energy_t": {
+    "direct_metrics": {
+      "mse": 0.08199195773239153,
+      "rmse": 0.2863423785128417,
+      "mae": 0.26734775862023236,
+      "max_abs_error": 0.3770472928881645
+    },
+    "affine_calibration": {
+      "a": 428.48678574233355,
+      "b": -52.338215013990805,
+      "regression_metrics": {
+        "mse": 0.010353286161744704,
+        "rmse": 0.10175109906897667,
+        "mae": 0.08234957361575952,
+        "max_abs_error": 0.30386884213232435
+      }
+    },
+    "correlations": {
+      "pearson_correlation": 0.16858500122994036,
+      "spearman_correlation": 0.21244451898413713
+    }
+  },
+  "scalar_trajectory_monotonicity": {
+    "mean_monotone_fraction": 0.6598989898989899,
+    "mean_positive_violation": 2.413160271114774e-08,
+    "max_positive_violation_overall": 4.3213367462158203e-07
+  },
+  "scalar_vs_dissipation_t": {
+    "direct_metrics": {
+      "mse": 5.604240848959946,
+      "rmse": 2.367327786547513,
+      "mae": 1.8568340404979884,
+      "max_abs_error": 10.26348689198494
+    },
+    "affine_calibration": {
+      "a": -5848.489068417255,
+      "b": 721.6767207340844,
+      "regression_metrics": {
+        "mse": 2.1057731345692994,
+        "rmse": 1.451128228162246,
+        "mae": 1.1116968295114675,
+        "max_abs_error": 8.554346822025991
+      }
+    },
+    "correlations": {
+      "pearson_correlation": -0.16153913096446096,
+      "spearman_correlation": -0.1349248664938407
+    }
+  },
+  "checkpoint_path": "outputs\\models\\latent_dynamics_autoencoder\\best_latent_dynamics_autoencoder.pt",
+  "dataset_path": "outputs\\data\\test_data.npz",
+  "model_type": "latent_dynamics_autoencoder",
+  "stride": 1,
+  "best_val_loss_from_training": 0.006541339619085193,
+  "loss_config": {
+    "reconstruction_weight": 1.0,
+    "prediction_weight": 1.0,
+    "monotonicity_weight": 1.0,
+    "variance_weight": 0.01,
+    "min_latent_variance": 0.01,
+    "monotonicity_mode": "squared_hinge",
+    "prediction_mode": "mse"
+  }
+}

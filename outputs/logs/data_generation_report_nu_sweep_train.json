@@ -1,0 +1,90 @@
+{
+  "split": "train",
+  "dataset_version": "nu_sweep_v1",
+  "summary": {
+    "n_trajectories": 600,
+    "n_times": 101,
+    "Nx": 1024,
+    "global_min_state": -1.8527736666105066,
+    "global_max_state": 1.8190431192555854,
+    "mean_initial_energy": 0.6897815597120608,
+    "mean_final_energy": 0.317580143367022,
+    "mean_dissipation": 6.277446430868453,
+    "ic_distribution": {
+      "fourier": 201,
+      "gaussian_bumps": 201,
+      "random_smooth": 198
+    },
+    "mean_energy_monotone_fraction": 1.0,
+    "mean_energy_positive_violation": 0.0,
+    "nu_distribution": {
+      "nu=0.01": 200,
+      "nu=0.05": 200,
+      "nu=0.2": 200
+    },
+    "count_nu_ic_family": {
+      "nu=0.01|fourier": 67,
+      "nu=0.01|gaussian_bumps": 67,
+      "nu=0.01|random_smooth": 66,
+      "nu=0.05|fourier": 67,
+      "nu=0.05|gaussian_bumps": 67,
+      "nu=0.05|random_smooth": 66,
+      "nu=0.2|fourier": 67,
+      "nu=0.2|gaussian_bumps": 67,
+      "nu=0.2|random_smooth": 66
+    },
+    "target_l2_norm_min": 0.5047064475598022,
+    "target_l2_norm_max": 1.9961186966458673,
+    "mean_energy0": 0.6897815597120608,
+    "max_abs_mass0": 3.3134750731082e-15,
+    "max_initial_cell_peclet": 1.1368476835523813,
+    "dataset_version": "nu_sweep_v1"
+  },
+  "sanity_checks": {
+    "states_is_finite": true,
+    "energy_is_finite": true,
+    "dissipation_is_finite": true,
+    "times_is_sorted": true,
+    "x_is_sorted": true,
+    "energy_nonnegative": true,
+    "dissipation_nonnegative": true,
+    "nu_sweep_keys_present": true,
+    "nu_stratification_ok": true,
+    "ic_round_robin_ok": true,
+    "ic_balanced_within_nu_stratum": true,
+    "target_l2_norm_finite": true,
+    "energy0_finite": true,
+    "mass0_near_zero": true,
+    "dissipation_physical_shape_ok": true,
+    "dissipation_physical_nonnegative": true,
+    "energy0_matches_target": true,
+    "initial_cell_peclet_finite": true,
+    "target_l2_norm_in_range": true
+  },
+  "gates": {
+    "n_trajectories": 600,
+    "dt_saved": 0.02,
+    "pass_fraction": 1.0,
+    "gate_pass_fraction": 0.95,
+    "mean_monotone_fraction": 1.0,
+    "min_monotone_fraction": 1.0,
+    "gate_monotone_frac": 0.99,
+    "gate_monotone_atol_rel": 1e-08,
+    "max_abs_u": 1.8527736666105066,
+    "gate_max_abs_u": 5.0,
+    "median_dedt_rel_err": 0.005457015915345502,
+    "gate_dedt_rel_err": 0.01,
+    "checks": {
+      "all_finite": true,
+      "monotone_pass_fraction_ok": true,
+      "max_abs_u_ok": true,
+      "dedt_rel_err_ok": true
+    },
+    "gates_passed": true,
+    "diagnostics": {
+      "max_cell_peclet": 1.1368476835523813,
+      "gate_max_cell_peclet": 2.0,
+      "cell_peclet_ok": true
+    }
+  }
+}

@@ -1,0 +1,224 @@
+"""
+main_train_latent_seq.py
+========================
+
+Point d'entrée de window-A (Architecture A-Sequence, Step 5) : Architecture A
+(`LatentDynamicsAutoencoder`) avec encodeur Conv1D sur fenêtre de `window_size`
+snapshots, entraînée sur nu_sweep_v1, évaluée contre nu*D à nu held-out.
+
+Usage (depuis la racine du projet, environnement torch) :
+
+    python main_train_latent_seq.py                          # w=25, standard + heldout_nu, tag "aseq"
+    python main_train_latent_seq.py --window-size 50         # autre fenêtre
+    python main_train_latent_seq.py --protocols standard     # un seul protocole
+    python main_train_latent_seq.py --tag aseq_w50           # rapports suffixés
+
+Sorties :
+- modèles/métriques : `outputs/models/latent_dynamics_autoencoder_seq/window_w{w}_{protocole}/`
+  (best_model.pt, metrics JSON + CSV long, standardizers.json) ;
+- résumé + verdict : `outputs/logs/experiment_a_seq_summary[_tag].json`
+  (r_holdout, R² held-out, pente de calibration, beats_nu_oracle, critères
+  structurels, verdict IDENTIFIABLE / PARTIAL / NOT IDENTIFIABLE) + snapshot config.
+
+Le verdict n'est calculé que si les deux protocoles ont tourné.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+from typing import Any, Dict, Optional, Sequence
+
+import config as config_module
+
+
+def ensure_dir(path: str | Path) -> Path:
+    path = Path(path)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def save_json(path: str | Path, data: Dict[str, Any]) -> None:
+    path = Path(path)
+    ensure_dir(path.parent)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=2, ensure_ascii=False, default=str)
+
+
+def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Window-A (Architecture A-Sequence) : LatentDynamicsAutoencoder + encodeur Conv1D "
+                    "sur fenêtre de w snapshots, sur nu_sweep_v1, évaluation z vs nu*D à nu held-out."
+    )
+    parser.add_argument(
+        "--protocols", nargs="*", default=None,
+        choices=["standard", "heldout_nu"],
+        help="Protocoles à exécuter (défaut: ceux de config.experiment_a_seq).",
+    )
+    parser.add_argument(
+        "--window-size", type=int, default=None, metavar="W",
+        help="Taille de la fenêtre temporelle (défaut: config.experiment_a_seq.window_size = 25).",
+    )
+    parser.add_argument(
+        "--tag", type=str, default="aseq",
+        help="Suffixe des rapports globaux (défaut 'aseq' -> experiment_a_seq_summary_aseq.json).",
+    )
+    return parser.parse_args(argv)
+
+
+def run_a_seq(
+    config: Any,
+    protocols: Optional[Sequence[str]] = None,
+    window_size: Optional[int] = None,
+    tag: str = "aseq",
+    verbose: bool = True,
+) -> Dict[str, Any]:
+    """Exécute window-A pour chaque protocole demandé et écrit le résumé + verdict."""
+    import ml_train_experiment_a_seq as mt  # import tardif : requiert torch
+
+    ec = config.experiment_c
+    aseq = config.experiment_a_seq
+
+    protocols = list(protocols) if protocols is not None else list(aseq.protocols)
+    w = int(window_size) if window_size is not None else int(aseq.window_size)
+    if w < 1:
+        raise ValueError("`window_size` doit être >= 1.")
+
+    data_dir = Path(config.paths.data_dir)
+    models_root = Path(config.paths.models_dir) / aseq.models_subdir
+    logs_dir = ensure_dir(config.paths.logs_dir)
+
+    if verbose:
+        print("\n" + "=" * 70)
+        print("Window-A (Architecture A-Sequence) sur nu_sweep_v1")
+        print("=" * 70)
+        print(f"- protocoles : {protocols}")
+        print(f"- fenêtre    : w={w}")
+        print(f"- tag        : {tag}")
+        print(f"- sorties    : {models_root}")
+
+    runs: Dict[str, Dict[str, Any]] = {}
+    for protocol in protocols:
+        output_dir = ensure_dir(models_root / f"window_w{w}_{protocol}")
+        if verbose:
+            print(f"\n--- protocole {protocol} -> {output_dir} ---")
+        results = mt.train_and_evaluate_a_seq(
+            protocol=protocol,
+            train_path=data_dir / ec.train_filename,
+            val_path=data_dir / ec.val_filename,
+            test_path=data_dir / ec.test_filename,
+            output_dir=output_dir,
+            window_size=w,
+            heldout_nu_values=ec.heldout_nu_values,
+            batch_size=aseq.batch_size,
+            learning_rate=aseq.learning_rate,
+            num_epochs=aseq.num_epochs,
+            patience=aseq.patience,
+            weight_decay=aseq.weight_decay,
+            latent_dim=aseq.latent_dim,
+            conv_channels=aseq.conv_channels,
+            kernel_size=aseq.kernel_size,
+            conv_stride=aseq.conv_stride,
+            trunk_dims=aseq.trunk_dims,
+            decoder_hidden_dims=aseq.decoder_hidden_dims,
+            predictor_hidden_dims=aseq.predictor_hidden_dims,
+            scalar_head_hidden_dims=aseq.scalar_head_hidden_dims,
+            activation=aseq.activation,
+            dropout=aseq.dropout,
+            reconstruction_weight=aseq.reconstruction_weight,
+            prediction_weight=aseq.prediction_weight,
+            monotonicity_weight=aseq.monotonicity_weight,
+            variance_weight=aseq.variance_weight,
+            min_latent_variance=aseq.min_latent_variance,
+            monotonicity_mode=aseq.monotonicity_mode,
+            prediction_mode=aseq.prediction_mode,
+            eval_times=aseq.eval_times,
+            seed=int(config.reproducibility.seed),
+            device=config.ml.device,
+            num_workers=0,
+            print_every=10,
+            verbose=verbose,
+        )
+        runs[protocol] = {
+            "output_dir": str(output_dir),
+            "window_size": w,
+            "checkpoint_path": results["checkpoint_path"],
+            "best_epoch": results["best_epoch"],
+            "best_val_loss": results["best_val_loss"],
+            "stopped_early": results["stopped_early"],
+            "results": results,
+        }
+
+    thresholds = {
+        "r_holdout_min": aseq.r_holdout_min,
+        "r2_holdout_min": aseq.r2_holdout_min,
+        "slope_min": aseq.slope_min,
+        "slope_max": aseq.slope_max,
+        "r_holdout_fail": aseq.r_holdout_fail,
+        "rank_min": aseq.rank_min,
+        "rec_rmse_max": aseq.rec_rmse_max,
+        "monotone_min": aseq.monotone_min,
+    }
+
+    verdict: Dict[str, Any] = {}
+    if "standard" in runs and "heldout_nu" in runs:
+        verdict["window_a"] = mt.verdict_a_seq(
+            runs["standard"]["results"], runs["heldout_nu"]["results"], thresholds
+        )
+
+    summary: Dict[str, Any] = {
+        "experiment": "experiment_a_seq",
+        "tag": tag,
+        "dataset_version": "nu_sweep_v1",
+        "seed": int(config.reproducibility.seed),
+        "window_size": w,
+        "protocols": protocols,
+        "runs": {
+            p: {k: v for k, v in info.items() if k != "results"}
+            for p, info in runs.items()
+        },
+        "verdict": verdict,
+        "thresholds": thresholds,
+    }
+
+    def _tagged(filename: str) -> str:
+        return filename if not tag else filename.replace(".json", f"_{tag}.json")
+
+    summary_path = logs_dir / _tagged(aseq.summary_filename)
+    save_json(summary_path, summary)
+    save_json(logs_dir / _tagged(aseq.config_snapshot_filename), config.to_dict())
+
+    if verbose:
+        print("\n" + "=" * 70)
+        print("Résumé window-A")
+        print("=" * 70)
+        for p, info in runs.items():
+            print(f"- {p:10s} best_epoch={info['best_epoch']} best_val_loss={info['best_val_loss']:.6e} "
+                  f"stopped_early={info['stopped_early']}")
+        if "window_a" in verdict:
+            d = verdict["window_a"]
+            print(f"- verdict z vs nu*D (nu=0.01 held-out) = {d['verdict']}")
+            print(f"    r_holdout={d['r_holdout']:.3f} R2_holdout={d['r2_holdout_nu001']:.3f} "
+                  f"cal_slope={d['calibration_slope_nu001']:.3f} beats_nu_oracle={d['beats_nu_oracle']}")
+            print(f"    rang={d['effective_rank']:.0f} rec_rmse={d['reconstruction_rmse_test']:.4f} "
+                  f"monotone={d['monotone_fraction_test']:.4f} structural_ok={d['structural_ok']}")
+        print(f"Résumé sauvegardé : {summary_path}")
+
+    return summary
+
+
+def main(argv: Optional[Sequence[str]] = None) -> Dict[str, Any]:
+    args = _parse_args(argv)
+    config = config_module.get_default_config(create_dirs=True)
+    return run_a_seq(
+        config,
+        protocols=args.protocols,
+        window_size=args.window_size,
+        tag=args.tag,
+        verbose=True,
+    )
+
+
+if __name__ == "__main__":
+    main()

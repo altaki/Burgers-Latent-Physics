@@ -1,0 +1,161 @@
+{
+  "dataset_version": "nu_sweep_v1",
+  "protocol": "nu_sweep_v1: nu in {0.01,0.05,0.20} stratifie; target_l2_norm log-uniform(0.5,2.0); zero_mean=True pour toutes les familles de CI; Nx=1024, dt=1e-4, save_every=200, RK4, L=2pi, T=2.0, 101 snapshots",
+  "nu_values": [
+    0.01,
+    0.05,
+    0.2
+  ],
+  "numerical": {
+    "Nx": 1024,
+    "dt": 0.0001,
+    "save_every": 200,
+    "L": 6.283185307179586,
+    "T": 2.0,
+    "time_scheme": "rk4"
+  },
+  "splits": {
+    "train": 600,
+    "val": 150,
+    "test": 150
+  },
+  "pilot": {
+    "overall_pass": true,
+    "selected_level": 1,
+    "n_levels_tested": 1
+  },
+  "split_reports": {
+    "train": {
+      "filename": "train_data_nu_sweep.npz",
+      "summary": {
+        "n_trajectories": 600,
+        "n_times": 101,
+        "Nx": 1024,
+        "global_min_state": -1.8527736666105066,
+        "global_max_state": 1.8190431192555854,
+        "mean_initial_energy": 0.6897815597120608,
+        "mean_final_energy": 0.317580143367022,
+        "mean_dissipation": 6.277446430868453,
+        "ic_distribution": {
+          "fourier": 201,
+          "gaussian_bumps": 201,
+          "random_smooth": 198
+        },
+        "mean_energy_monotone_fraction": 1.0,
+        "mean_energy_positive_violation": 0.0,
+        "nu_distribution": {
+          "nu=0.01": 200,
+          "nu=0.05": 200,
+          "nu=0.2": 200
+        },
+        "count_nu_ic_family": {
+          "nu=0.01|fourier": 67,
+          "nu=0.01|gaussian_bumps": 67,
+          "nu=0.01|random_smooth": 66,
+          "nu=0.05|fourier": 67,
+          "nu=0.05|gaussian_bumps": 67,
+          "nu=0.05|random_smooth": 66,
+          "nu=0.2|fourier": 67,
+          "nu=0.2|gaussian_bumps": 67,
+          "nu=0.2|random_smooth": 66
+        },
+        "target_l2_norm_min": 0.5047064475598022,
+        "target_l2_norm_max": 1.9961186966458673,
+        "mean_energy0": 0.6897815597120608,
+        "max_abs_mass0": 3.3134750731082e-15,
+        "max_initial_cell_peclet": 1.1368476835523813,
+        "dataset_version": "nu_sweep_v1"
+      },
+      "sanity_checks_all_true": true,
+      "gates_passed": true
+    },
+    "val": {
+      "filename": "val_data_nu_sweep.npz",
+      "summary": {
+        "n_trajectories": 150,
+        "n_times": 101,
+        "Nx": 1024,
+        "global_min_state": -1.7421067412873679,
+        "global_max_state": 1.7119712292030358,
+        "mean_initial_energy": 0.641577811714449,
+        "mean_final_energy": 0.30113007586217455,
+        "mean_dissipation": 5.046875628606888,
+        "ic_distribution": {
+          "fourier": 51,
+          "gaussian_bumps": 51,
+          "random_smooth": 48
+        },
+        "mean_energy_monotone_fraction": 1.0,
+        "mean_energy_positive_violation": 0.0,
+        "nu_distribution": {
+          "nu=0.01": 50,
+          "nu=0.05": 50,
+          "nu=0.2": 50
+        },
+        "count_nu_ic_family": {
+          "nu=0.01|fourier": 17,
+          "nu=0.01|gaussian_bumps": 17,
+          "nu=0.01|random_smooth": 16,
+          "nu=0.05|fourier": 17,
+          "nu=0.05|gaussian_bumps": 17,
+          "nu=0.05|random_smooth": 16,
+          "nu=0.2|fourier": 17,
+          "nu=0.2|gaussian_bumps": 17,
+          "nu=0.2|random_smooth": 16
+        },
+        "target_l2_norm_min": 0.50469745838743,
+        "target_l2_norm_max": 1.9724003586129426,
+        "mean_energy0": 0.641577811714449,
+        "max_abs_mass0": 1.2207539743030211e-15,
+        "max_initial_cell_peclet": 0.9207864182623737,
+        "dataset_version": "nu_sweep_v1"
+      },
+      "sanity_checks_all_true": true,
+      "gates_passed": true
+    },
+    "test": {
+      "filename": "test_data_nu_sweep.npz",
+      "summary": {
+        "n_trajectories": 150,
+        "n_times": 101,
+        "Nx": 1024,
+        "global_min_state": -1.7940790033838698,
+        "global_max_state": 1.697882086853935,
+        "mean_initial_energy": 0.6722573662471774,
+        "mean_final_energy": 0.29861969054749643,
+        "mean_dissipation": 6.343225665783743,
+        "ic_distribution": {
+          "fourier": 51,
+          "gaussian_bumps": 51,
+          "random_smooth": 48
+        },
+        "mean_energy_monotone_fraction": 1.0,
+        "mean_energy_positive_violation": 0.0,
+        "nu_distribution": {
+          "nu=0.01": 50,
+          "nu=0.05": 50,
+          "nu=0.2": 50
+        },
+        "count_nu_ic_family": {
+          "nu=0.01|fourier": 17,
+          "nu=0.01|gaussian_bumps": 17,
+          "nu=0.01|random_smooth": 16,
+          "nu=0.05|fourier": 17,
+          "nu=0.05|gaussian_bumps": 17,
+          "nu=0.05|random_smooth": 16,
+          "nu=0.2|fourier": 17,
+          "nu=0.2|gaussian_bumps": 17,
+          "nu=0.2|random_smooth": 16
+        },
+        "target_l2_norm_min": 0.5024741598428336,
+        "target_l2_norm_max": 1.995430952750575,
+        "mean_energy0": 0.6722573662471774,
+        "max_abs_mass0": 3.4878684980086318e-15,
+        "max_initial_cell_peclet": 1.0054921892222508,
+        "dataset_version": "nu_sweep_v1"
+      },
+      "sanity_checks_all_true": true,
+      "gates_passed": true
+    }
+  }
+}

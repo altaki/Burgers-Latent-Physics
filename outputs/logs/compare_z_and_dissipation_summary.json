@@ -1,0 +1,192 @@
+{
+  "dataset_path": "outputs\\data\\test_data.npz",
+  "checkpoint_path": "outputs\\models\\latent_dynamics\\best_latent_dynamics_model.pt",
+  "comparisons": {
+    "z_vs_dissipation": {
+      "mse": 0.08125890101104667,
+      "rmse": 0.28505946925342907,
+      "mae": 0.2698028748246437,
+      "pearson": 0.37957623794554707,
+      "spearman": 0.4264900964542776
+    },
+    "-z_vs_dissipation": {
+      "mse": 0.02367642325402563,
+      "rmse": 0.1538714504189313,
+      "mae": 0.12982780861978419,
+      "pearson": -0.37957623794554707,
+      "spearman": -0.4264900964542776
+    },
+    "z_vs_log_dissipation": {
+      "mse": 7.317364333814205,
+      "rmse": 2.705062722713506,
+      "mae": 2.520030812019483,
+      "pearson": 0.436343696874171,
+      "spearman": 0.4264900964542776
+    },
+    "-z_vs_log_dissipation": {
+      "mse": 9.316579561172514,
+      "rmse": 3.052307252091852,
+      "mae": 2.861803863168136,
+      "pearson": -0.436343696874171,
+      "spearman": -0.4264900964542776
+    },
+    "z_vs_sqrt_dissipation": {
+      "mse": 0.2264296051759857,
+      "rmse": 0.47584619907695563,
+      "mae": 0.4614859255877601,
+      "pearson": 0.42017416395685464,
+      "spearman": 0.4264900964542776
+    },
+    "-z_vs_sqrt_dissipation": {
+      "mse": 0.045958552368501215,
+      "rmse": 0.2143794588306007,
+      "mae": 0.17588796618979613,
+      "pearson": -0.42017416395685464,
+      "spearman": -0.4264900964542776
+    },
+    "z_vs_gradient_l2": {
+      "mse": 2.41915025657676,
+      "rmse": 1.5553617767505925,
+      "mae": 1.4704865508757081,
+      "pearson": 0.4201741639568548,
+      "spearman": 0.4264900964542776
+    },
+    "-z_vs_gradient_l2": {
+      "mse": 1.612059172479781,
+      "rmse": 1.2696689223887387,
+      "mae": 1.1294119297220082,
+      "pearson": -0.4201741639568548,
+      "spearman": -0.4264900964542776
+    },
+    "z_vs_max_abs_gradient": {
+      "mse": 4.384629265058834,
+      "rmse": 2.093950635774118,
+      "mae": 1.8648141780671634,
+      "pearson": 0.3483554538546228,
+      "spearman": 0.4212209100894647
+    },
+    "-z_vs_max_abs_gradient": {
+      "mse": 3.3494642080114345,
+      "rmse": 1.8301541487020798,
+      "mae": 1.5256551159577207,
+      "pearson": -0.3483554538546228,
+      "spearman": -0.4212209100894647
+    }
+  },
+  "affine_comparisons": {
+    "dissipation_from_z": {
+      "a": 0.310549696518125,
+      "b": 0.15198510790645905,
+      "metrics": {
+        "mse": 0.004626675844138362,
+        "rmse": 0.06801967247891129,
+        "mae": 0.05367100883907774,
+        "pearson": 0.37957623794554696,
+        "spearman": 0.4264900964542776
+      }
+    },
+    "dissipation_from_minus_z": {
+      "a": -0.310549696518125,
+      "b": 0.15198510790645905,
+      "metrics": {
+        "mse": 0.004626675844138362,
+        "rmse": 0.06801967247891129,
+        "mae": 0.05367100883907774,
+        "pearson": 0.37957623794554696,
+        "spearman": 0.4264900964542776
+      }
+    },
+    "log_dissipation_from_z": {
+      "a": 4.948569029252962,
+      "b": -1.8452735696200682,
+      "metrics": {
+        "mse": 0.8409019376481683,
+        "rmse": 0.9170070543066549,
+        "mae": 0.7402277410021237,
+        "pearson": 0.4363436968741707,
+        "spearman": 0.4264900964542776
+      }
+    },
+    "sqrt_dissipation_from_z": {
+      "a": 0.562410327152382,
+      "b": 0.3867077467676202,
+      "metrics": {
+        "mse": 0.011914006021846715,
+        "rmse": 0.10915129876390255,
+        "mae": 0.08957186641963324,
+        "pearson": 0.4201741639568548,
+        "spearman": 0.4264900964542776
+      }
+    },
+    "gradient_l2_from_z": {
+      "a": 2.5151754455212445,
+      "b": 1.7294096183963468,
+      "metrics": {
+        "mse": 0.2382801204369343,
+        "rmse": 0.4881394477369498,
+        "mae": 0.4005775643716612,
+        "pearson": 0.42017416395685514,
+        "spearman": 0.4264900964542776
+      }
+    },
+    "max_abs_gradient_from_z": {
+      "a": 3.798904372208833,
+      "b": 2.3431092216486946,
+      "metrics": {
+        "mse": 0.8438347689452584,
+        "rmse": 0.9186047947541197,
+        "mae": 0.7541571694425545,
+        "pearson": 0.34835545385462297,
+        "spearman": 0.4212209100894647
+      }
+    }
+  },
+  "best_dissipation_fit": {
+    "fit_name": "dissipation_from_z",
+    "z_used_label": "z",
+    "a": 0.310549696518125,
+    "b": 0.15198510790645905,
+    "metrics": {
+      "mse": 0.004626675844138362,
+      "rmse": 0.06801967247891129,
+      "mae": 0.05367100883907774,
+      "pearson": 0.37957623794554696,
+      "spearman": 0.4264900964542776
+    }
+  },
+  "residual_analysis": {
+    "residual_vs_energy": {
+      "mse": 0.17183939524627365,
+      "rmse": 0.4145351556216597,
+      "mae": 0.3901474457238298,
+      "pearson": -0.3091575872619151,
+      "spearman": -0.5113964122595239
+    },
+    "residual_vs_time": {
+      "mse": 1.3383247008881565,
+      "rmse": 1.156859844963147,
+      "mae": 0.9944253756559182,
+      "pearson": -0.2584470593623955,
+      "spearman": -0.15252407515700472
+    },
+    "residual_vs_max_abs_gradient": {
+      "mse": 3.7370240283064384,
+      "rmse": 1.9331383882967195,
+      "mae": 1.693927652492835,
+      "pearson": 0.7303766662606268,
+      "spearman": 0.7595844518278445
+    }
+  },
+  "generated_figures": [
+    "compare_z_dissipation_scatter.png",
+    "compare_minus_z_dissipation_scatter.png",
+    "compare_z_log_dissipation_scatter.png",
+    "compare_z_sqrt_dissipation_scatter.png",
+    "compare_z_dissipation_traj0.png",
+    "compare_z_dissipation_traj1.png",
+    "compare_z_dissipation_traj2.png",
+    "compare_residuals_vs_energy.png",
+    "compare_residuals_vs_time.png",
+    "compare_residuals_vs_max_abs_gradient.png"
+  ]
+}

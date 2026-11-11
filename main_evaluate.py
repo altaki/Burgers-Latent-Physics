@@ -245,16 +245,19 @@ def main() -> Dict[str, Any]:
     evaluate_saved_supervised_model = eval_module.evaluate_saved_supervised_model
     evaluate_saved_latent_autoencoder = eval_module.evaluate_saved_latent_autoencoder
     evaluate_saved_latent_dynamics_model = eval_module.evaluate_saved_latent_dynamics_model
+    evaluate_saved_latent_dynamics_autoencoder = eval_module.evaluate_saved_latent_dynamics_autoencoder
 
     # Checkpoints attendus
     supervised_ckpt = models_dir / 'supervised' / 'best_energy_regressor.pt'
     latent_dynamics_ckpt = models_dir / 'latent_dynamics' / 'best_latent_dynamics_model.pt'
     latent_autoencoder_ckpt = models_dir / 'latent_autoencoder' / 'best_latent_autoencoder.pt'
+    latent_dyn_ae_ckpt = models_dir / 'latent_dynamics_autoencoder' / 'best_latent_dynamics_autoencoder.pt'
 
     print_section('Recherche des checkpoints')
     print(f'- Supervised checkpoint        : {supervised_ckpt}')
     print(f'- Latent dynamics checkpoint   : {latent_dynamics_ckpt}')
     print(f'- Latent autoencoder checkpoint: {latent_autoencoder_ckpt}')
+    print(f'- Latent dynamics AE checkpoint: {latent_dyn_ae_ckpt}')
 
     summary: Dict[str, Any] = {
         'project_name': project_name,
@@ -317,6 +320,25 @@ def main() -> Dict[str, Any]:
         print(f"- Rapport sauvegardé : {latent_ae_report_path}")
     else:
         print('\n[Info] Aucun checkpoint d\'autoencodeur latent trouvé, évaluation correspondante ignorée.')
+
+    # -------------------------------------------------------------------------
+    # 4) Évaluation autoencodeur de dynamique latente (Architecture A)
+    # -------------------------------------------------------------------------
+    if latent_dyn_ae_ckpt.exists():
+        print_section('Évaluation de l\'autoencodeur de dynamique latente (Architecture A)')
+        latent_dyn_ae_report_path = logs_dir / 'evaluation_latent_dynamics_autoencoder_test.json'
+        latent_dyn_ae_results = evaluate_saved_latent_dynamics_autoencoder(
+            checkpoint_path=latent_dyn_ae_ckpt,
+            dataset_path=test_path,
+            batch_size=128,
+            stride=None,
+            device=device,
+            output_json_path=latent_dyn_ae_report_path,
+        )
+        summary['evaluations']['latent_dynamics_autoencoder'] = latent_dyn_ae_results['report']
+        print(f"- Rapport sauvegardé : {latent_dyn_ae_report_path}")
+    else:
+        print('\n[Info] Aucun checkpoint d\'autoencodeur de dynamique latente trouvé, évaluation correspondante ignorée.')
 
     print_section('Sauvegarde du résumé global')
     summary_path = logs_dir / 'main_evaluate_summary.json'
