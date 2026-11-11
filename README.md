@@ -38,6 +38,7 @@ main_identify_latent_variable.py, main_compare_z_and_dissipation.py,
 main_visualize_results.py, main_visualize_latent_results.py, main_experiment_c.py,
 main_experiment_c2.py        # Experiment C2: long temporal windows (c3_window, w=5/25/50)
 main_train_latent_seq.py     # window-A: latent dynamics autoencoder on w-snapshot windows (Step 5)
+main_analyze_window_a_latents.py  # window-A latent analysis: per-dim h vs nu*D + linear probe (no retraining)
 physics_candidates.py         # ~37 candidate observables + ranking vs a latent scalar
 utils_plotting.py             # figures
 outputs/                      # data/ models/ figures/ logs/ (all results committed)
@@ -60,6 +61,8 @@ python main_experiment_c2.py  # Experiment C2: c3_window with w = 5 25 50, tag "
 python main_train_latent_seq.py [--protocols standard heldout_nu] [--window-size 25] [--tag aseq]
                               # window-A (Step 5): latent dynamics autoencoder on w=25 windows,
                               #   verdict z-vs-nuD in outputs/logs/experiment_a_seq_summary_{tag}.json
+python main_analyze_window_a_latents.py [--window-sizes 25 50] [--protocols standard heldout_nu]
+                              # analyse des latents h des checkpoints window-A (sans ré-entraînement)
 ```
 
 ## Data
@@ -580,11 +583,42 @@ failure, not a collapse artifact. Metric caveat: raw `r2`/`calibration_slope` ar
 arbitrary latent units; the calibrated R² is Pearson² (0.09 @ν=0.01, w=25 held-out) — the
 verdict is driven by scale-invariant Spearman anyway.
 
+### Latent analysis of the existing checkpoints (no retraining)
+
+`main_analyze_window_a_latents.py` → `outputs/logs/h_dims_window_a_analysis.{json,csv}`
+(per-dim h0..h7/z vs νD: Spearman, Pearson, R² affine, slope, rel_rmse on global/ν strata)
+and `outputs/logs/h_linear_probe_window_a.json` (linear readout νD ~ [h,1] / [z,1] fit on
+train, evaluated on test).
+
+Key numbers (test, strate ν=0.01 held-out):
+
+| run | best single dim (Spearman @ν=0.01) | z (Spearman) | linear probe on h (Spearman / R² @ν=0.01) | probe on z |
+|---|---|---|---|---|
+| w=25 heldout_nu | h0: **−0.539** (R²_aff 0.34) | 0.249 | **0.655 / 0.09** | 0.249 / 0.04 |
+| w=50 standard | h3: 0.565, h5: 0.385 | 0.614 | **0.777 / 0.40** | 0.614 / 0.33 |
+| w=50 heldout_nu | h4: 0.415 | −0.035 | **0.548 / 0.19** | −0.035 / −0.08 |
+
+Dim identification (Spearman vs D / vs E, test global): h0–h2 are anti-correlated with both
+D and E (≈ −0.5) → energy/decay-like dims; h3/h4/h7 positively correlated with D → shock
+complex. No single dim carries νD at held-out ν (|ρ| ≤ 0.57).
+
+**Answers**:
+- *Does νD exist in h but fail to be selected by z?* **Partially yes**: a linear readout on
+  h roughly triples the held-out Spearman vs z (0.25→0.66 at w=25; −0.04→0.55 at w=50) and
+  yields positive R² at ν=0.01 — νD is present in h in **distributed** form, but the scalar
+  z head + mono hinge select a different (E-like decay) scalar. Still far from supervised C2
+  (0.97 / R² 0.69): the encoder retains only part of the ν-specific information.
+- *Minimal z-objective modification to recover νD*: add a **self-supervised energy-balance
+  term** L_z = MSE(z_t, (E_{t−w} − E_t)/(w·dt)) — by the exact identity dE/dt = −νD this
+  target IS νD, and E is computable from the window endpoints alone (no labels). Keep the
+  mono hinge (νD decays). Ceiling variant: supervised z-head on the stored
+  `nu_dissipation_t`.
+
 ### Next experiments (ranked)
 
-1. **Per-dim h evaluation of the existing checkpoints** (no retraining, immediate):
-   Spearman/Pearson of each h_j vs νD @ held-out ν=0.01 — checks whether νD lives in an
-   h dim rather than in the scalar z.
+1. ~~**Per-dim h evaluation of the existing checkpoints**~~ **Done** (see above): νD is in h
+   only in distributed form (linear probe 0.55–0.78 @ν=0.01 held-out vs 0.25/−0.04 for z);
+   no single h_j carries it.
 2. **Physics-informed z (self-supervised)**: add λ_z·MSE(z, −ΔE/Δt) with −ΔE/Δt estimated
    from the window itself, (E(t)−E(t−w))/(w·dt) = νD exactly by the energy identity —
    anchors z to νD without labels, reuses all window-A infra. **Main next run.**
