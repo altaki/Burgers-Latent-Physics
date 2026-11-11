@@ -829,8 +829,10 @@ Métriques ν=0.01 held-out (test : 3 800 fenêtres / 50 trajectoires), z en **u
   inchangé**), d'où PARTIAL et non IDENTIFIABLE.
 - **Stratifications depuis `predictions_test.npz`** (sans réentraînement,
   `outputs/logs/aphysis_stratifications.json`) : à ν=0.01, **0 % des fenêtres hors plage**
-  (max νD test 1.4509 < max train 1.8121) ; par phase (dD/dt > 0 = raidissement, 22 % des
-  fenêtres) aphys tient dans les deux phases (Spearman 0.93–0.96 en raidissement, 0.95–0.97 en
+  (max νD test 1.4509 < max train 1.8121) ; par phase (dD/dt > 0 = raidissement ; **22 % affiché =
+  2514/11400, dénominateur poolé sur les 3 strates — fraction intra-strate ν=0.01 = 66.2 %**,
+  les rel_rmse « raidissement » portent bien sur les n=2514 fenêtres à ν=0.01) aphys tient dans
+  les deux phases (Spearman 0.93–0.96 en raidissement, 0.95–0.97 en
   décroissance ; rel_rmse plus élevé en raidissement : 0.80–1.02 vs 0.31–0.43). **Rang effectif
   de h** (participation ratio sur le test) : none 3.7–5.7 vs aphys **1.6–2.5** — L_z concentre h
   sur ~2 directions (z + 1). Analyse per-dim (`h_dims_window_a_analysis.json`) : plusieurs dims
@@ -845,6 +847,43 @@ Métriques ν=0.01 held-out (test : 3 800 fenêtres / 50 trajectoires), z en **u
   la **préservation** d'une observable injectée (z scalaire quasi physique, pente ≈ 0.93), pas
   sa découverte. C2, supervisé sur νD, montre l'**apprenabilité** du canal énergie par un CNN —
   pas une découverte non plus. La découverte sans injection reste ouverte (Open questions).
+
+### Step 6 — A1: intra-trajectory dynamics of z (prereg `5623042`, data `97c6357`, verdict `ccb139a`, fix `57c9bb7`)
+
+Question : z est-il un **traceur dynamique** de νD au sein de chaque trajectoire, ou une
+**étiquette statique** bien calibrée ? Analyse en lecture seule (`main_analyze_a1_intra_trajectory.py`,
+prereg `outputs/prereg/a1_intra_trajectory_prereg.md`), ν=0.01 held-out, w=25, t ∈ [0.48, 1.98],
+50 trajectoires test. Règle de décision du prereg §4 (6 conditions) appliquée telle quelle →
+**verdict : TRACEUR DYNAMIQUE** au sens des 6 critères pré-enregistrés : z suit la dynamique de
+la dissipation au sein des trajectoires, à ν=0.01 held-out, w=25, t ∈ [0.48, 1.98].
+
+- aphys_mono0 (3 graines) : M1_raid = **0.974**, M2 (double centrage, profil horloge LOO retiré)
+  = **0.913** (IC95 inter-graines [0.858, 0.969]), M3(k=5) raid = 0.877, |M4| médian = **1 pas
+  (0.02 s, limite de résolution)** sur les 29 trajectoires à pic intérieur (19 pics à t=2.0,
+  2 avant 0.48), M6 = 0.81, M8 = −0.94, M5 = −2 pas (none : −9). Baseline E_t sans entraînement :
+  M1_raid −0.976, diff vs aphys = 1.950, IC95 [1.940, 1.961] (condition 4 du §4, exclut 0).
+  Nulls horloge : profil **médian** M2 = 0.009, profil **affine par traj** M2 = 0.529 (le −1 du
+  LOO moyen est un artefact de construction).
+- none_recal (3 graines, fit affine sur strates test 0.05/0.20 — prédictions train non exportées) :
+  per-seed M1_raid = 0.523 / −0.742 / −0.756, **moyenne 3 graines = −0.325 = none brut** → le
+  recalibrage affine n'apporte **aucune information dynamique** (α > 0 pour les 3 graines).
+- Portée : à ν fixé νD = 0.01·D, donc M1–M5/M7/M8 sont invariants par changement νD→D ; la
+  séparation νD/D est portée par **M6** (0.81 en unités νD vs 0.0081 rapporté à D) et la pente
+  de calibration (≈ 0.93).
+- Amplitude sous-estimée en raidissement (M6 = 0.81 < 1), cohérente avec l'écart au plafond
+  analytique (R² 0.84 vs 0.9995).
+- Analyse complémentaire (§3, pas un critère du §4) : appariement aphys vs none par graine,
+  dM1_raid = +0.46/+1.72/+1.73, moyenne +1.30, **IC95 t ddl=2 = [−0.52, 3.12] non concluante à
+  n=3** ; la largeur de l'IC vient de l'hétérogénéité de none (s42 M1_raid +0.52 vs s7/s123 ≈ −0.75).
+- Limites : M1_raid teste surtout le signe de la tendance ; 21/50 trajectoires ont leur pic au
+  bord de la fenêtre ; none_recal ajusté sur les strates test.
+- **Écarts au pré-enregistrement** : le verdict a d'abord été rapporté PARTIEL à cause d'une
+  implémentation non conforme au §4 (comparaison appariée vs none substituée à la condition 4
+  vs baseline E_t) ; corrigé en `ccb139a` après relecture du texte commité `5623042`, dans le
+  sens du texte. Verdict avant : PARTIEL → après : TRACEUR DYNAMIQUE.
+- Note Step 6 : `frac_dDdt_gt0` = 22.05 % = 2514/11400 (dénominateur poolé sur les 3 strates) ;
+  fraction intra-strate ν=0.01 = 2514/3800 = **66.2 %** (ν=0.05 : 39.8 %, ν=0.20 : 0 %).
+  Reproduit exactement par `main_reproduce_phase_strat.py` (`outputs/logs/phase_strat_reproduction.json`).
 
 Dataset facts measured on the npz (nu_sweep_v1): Nx=1024, 101 snapshots, dt_saved=0.02
 (T=2.0), max|mass0| = 3.49e-15 (zero_mean applied to ALL IC families, incl. gaussian_bumps),
@@ -868,9 +907,13 @@ save_every=200) — the nu_sweep_v1 npz is the ground truth.
 - Can an **injected** νD observable be *preserved* in the scalar z at held-out ν? → **Answered
   YES** (A-Physics, Step 6 : L_z = MSE(z_t, νD_est), 3 graines — Spearman 0.965 ± 0.004,
   IC95 [0.956, 0.974], pente physique 0.87–0.96, médian z/D ≈ 0.013 ≈ ν, beats ν-oracle) —
-  preservation of an injected observable, not discovery.
+  and **A1 (Step 6)**: preserved in rank, calibration AND intra-trajectory dynamics
+  (verdict TRACEUR DYNAMIQUE, 6/6 prereg criteria, prereg `5623042`) — preservation of an
+  injected observable, not discovery.
 - Can νD be **discovered without injection** (an unsupervised objective selecting the
   energy-slope channel on its own)? → **Open.**
+- Why do the encoders stay below the 2-snapshot estimator (R² 0.84 vs 0.9995)? → **Open**
+  (consistent with A1: amplitude under-estimated during sharpening, M6 = 0.81 < 1).
 - Which loss term creates the structured z — predictor or monotonicity hinge? (A0 ablation, not run)
 - ~~Do residual h dims encode shock position / Fourier content once collapse is fixed?~~ **Partially:
   with the collapse fixed, all h dims are static IC labels (shock_location, Fourier amps, spectral
