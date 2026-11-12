@@ -890,6 +890,82 @@ Dataset facts measured on the npz (nu_sweep_v1): Nx=1024, 101 snapshots, dt_save
 max|u| = 1.79. Note: this differs from the legacy spec (Nx=128, solver dt=1e-4,
 save_every=200) — the nu_sweep_v1 npz is the ground truth.
 
+## Step 7 — B1: held-out INTERPOLATION (ν = 0.05) — prereg `f431e66` + amendment `fc1075b`, artefacts `a6cb108`
+
+### Protocole
+`heldout_nu005` : train/val ν ∈ {0.01, 0.20} (`main_train_b1.py:33,76`), test complet, w=25,
+6 runs (aphys_mono0 = energy_centered λ_z=1 λ_mono=0, et none ; graines 42/7/123), tous sous
+Windows (logs UTF-16, chemins `C:\`), early stopping 30–57 époques, aucun NaN. Évaluation :
+`python3 main_evaluate_b1.py` (code `5e6f24e`), `test_egalite=True`, verdict PARTIAL.
+SHA-256 des 6 `predictions_test.npz` + metrics + logs consignés dans le commit `a6cb108`.
+
+### Verdict (règle fc1075b appliquée mot pour mot, bras aphys_mono0, moyenne 3 graines, IC95 t ddl=2)
+C1 Spearman 0.985 [0.968, 1.002] ≥ 0.8 ✅ (note : la borne haute 1.002 dépasse 1, borne de
+Spearman — artefact de l'IC t sur n=3 ; la moyenne 0.985 est la valeur de référence) ;
+C2 R² 0.927 [0.883, 0.971] ≥ 0.5 ✅ (comparable à causal_w25 0.917, dont l'IC contient 0.917 —
+pas de battement significatif) ; C3 pente 1.153 [1.069, 1.238] ∈ [0.5, 2] ✅ (prédiction
+prereg [0.8, 1.1] formulée en plage ponctuelle, sans IC → **falsifiée** en ponctuel) ;
+C4 rel_rmse 0.317 [0.219, 0.415] < ν-oracle 1.1803 ✅ (oracle = strate ν=0.05 du TRAIN COMPLET,
+README:342) ; C5 rang effectif 5.667 ≥ 3 ✅ ; **C6 rec RMSE 0.196 [0.177, 0.215] > 0.15 ❌ (seul
+échec)** ; C7 médian z/D 0.0470 [0.0458, 0.0482] ∈ [0.025, 0.10] ✅ ; C8 bat E_t (0.766/0.477)
+avec IC excluant 0 des deux côtés ✅ (ΔSpearman 0.219 [0.202, 0.236], ΔR² 0.450 [0.406, 0.494]) ;
+F1 non déclenché. **Verdict : PARTIAL.** none : NOT IDENTIFIABLE (Spearman −0.290/−0.046/−0.420,
+moy −0.245 ; R² calibré Pearson² 0.011–0.250 ; R² brut −12 à −29 = z non calibré).
+Appariement aphys−none (COMPLÉMENTAIRE, hors verdict) : ΔSpearman +1.28/+1.03/+1.40 par graine.
+
+### Analyse C6
+C6 échoue aussi sans L_z ; surcoût de L_z +0.020 [−0.014, +0.055], non significatif à n=3,
+cohérent avec le Step 6 (rec RMSE appariée aphys−none : +0.036/+0.008/+0.017 ; none 0.169–0.181
+> 0.15 aussi). Définition identique partout : `reconstruction_rmse_test = sqrt(mean((rec−u)²))`,
+test complet, états standardisés (`ml_train_experiment_a_seq.py:960`). Le verdict Step 6 lit le
+run **standard** (`verdict_a_seq`, `:727` `s = standard_results`) : summaries 0.1775/0.1702/0.1642
+(s7/s123 = metrics standard exacts ; s42 : summary 0.1775 vs metrics standard 0.1663, exécution
+antérieure) — les 0.193–0.206 sont les metrics du run **heldout_nu**, runs différents, pas
+d'incohérence. Plancher PCA linéaire de nu_sweep_v1 (population = test complet 150×101 snapshots,
+standardisation = GlobalStandardizer fit sur train complet, `ml_datasets.py:154-165`, unités =
+états standardisés, identiques à la rec RMSE) : rang 4 → 0.359, 5 → 0.298, 6 → 0.225, 8 → 0.188,
+16 → 0.103. Le modèle (0.190–0.205) bat le plancher au rang effectif 5–6 ; le seuil 0.15 a été
+calibré sur le dataset legacy Nx=128 (README:76,167,204 : rec RMSE 0.0874 PASS sur legacy) et est
+inatteignable en linéaire sur nu_sweep_v1 (Nx=1024, README:261) en dessous du rang ~16.
+
+### Exploratoire (étiqueté, non seuillé)
+A1 à ν=0.05 (50 traj ; pics νD sur [0,100] : 19 intérieurs [24,99], 17 avec ≥5 pas avant le pic,
+9 à t=2.0, 22 avant 0.48 → teste surtout la décroissance) : M1_all médian 0.970–0.980 ;
+M1_raid 0.986–0.989 (n=32 traj avec ≥5 pas en raidissement) ; M2 0.927–0.939 ; **M4 médian
++6/+7/+3 pas (n=19 pics intérieurs)** = retard systématique 0.06–0.14 s sur les 3 graines ;
+M6 1.26–2.08 (n=32) ; M8 −0.15 à −0.27. Tension pente/M6 en une phrase : la pente 1.15 (>1)
+signifie que z est sous-dispersé globalement (variance inter-trajectoire de νD compressée) tandis
+que M6 > 1 signifie qu'en raidissement intra-trajectoire z est sur-dispersé — z code la dynamique
+(pente d'énergie) plus que le niveau. Interpolation vs extrapolation (mêmes graines, apparié) :
+ΔSpearman B1−heldout_nu +0.020 [+0.010, +0.030], ΔR² +0.083 [−0.012, +0.178], Δrel_rmse −0.244
+[−0.413, −0.074], Δrec RMSE −0.002 [−0.036, +0.032]. Strates 0.01/0.20 in-distribution en B1.
+
+### Écarts au pré-enregistrement
+1. Nommage des runs `w25_...` (code) vs `window_w25_...` (prereg) → résolu côté évaluateur
+   (`2fa9b98`), prereg intact. 2. NaN → exit 1 ajouté à l'évaluateur (`2fa9b98`) avant
+   l'évaluation de production. 3. `calibration_slope` inversée (pente z~y au lieu de
+   νD~a·z+b, définition Step 6 `fit_affine_calibration`) → corrigée en `166c1ff`. 4. C5 :
+   texte fc1075b mot pour mot `{"id": "C5_rang_effectif", "metric": "effective_rank_h", "op": ">=",
+   "threshold": 3, "statut": "CONFIRMATOIRE"}` ; définition opérationnelle héritée du Step 6 =
+   rang 95 % (`latent_pca_stats`, `ml_models.py:574-599`). L'évaluateur calculait d'abord un
+   participation ratio → corrigé en `5e6f24e` (rang 95 % = 5.667). **Cette correction est
+   favorable au résultat** : avec le participation ratio, s42 = 2.757 < 3 aurait fait échouer C5 ;
+   le rang 95 % (5/6/6, moy 5.667) la fait passer. Les trois corrections ont été faites après une
+   première lecture des résultats, dans le sens du texte commité, contre l'intérêt apparent du
+   résultat ; le verdict est inchangé (PARTIAL, C6 seul échec) dans les trois versions. Sorties
+   archivées : `outputs/logs/b1_eval_archive/` (pre-`166c1ff`, pre-`5e6f24e`, HORODATAGES.md).
+   pip freeze Windows non consignable depuis le sandbox : à produire côté env VS Code
+   (`pip freeze > outputs/logs/b1_eval_archive/pip_freeze_windows.txt`).
+
+### Limites
+C6 échoue avec IC [0.177, 0.215] excluant 0.15 — structurel (même constat au Step 6, tous
+protocoles, y compris none). C5 : deux définitions ont coexisté (PR vs rang 95 %), corrigé ;
+les deux ≥ 3 sauf PR s42. A1 à ν=0.05 exploratoire (n=19/32), M4 retard systématique non seuillé.
+Appariement vs none à n=3, complémentaire. Environnement homogène (6/6 Windows) mais versions
+torch/numpy non consignées dans les logs. ν-oracle Step 6 : écart doc/code (moyenne globale du
+train filtré 1.4287638073 utilisée vs train complet 1.4287588915 annoncé README:342, écart
+4.9e-6, impact nul sur beats_nu_oracle) ; corrigé à partir de B1 (`train_dataset_full`).
+
 ## Open questions
 
 - ~~Does z track dissipation or the whole gradient/shock complex?~~ **Answered (Architecture A +
@@ -908,7 +984,9 @@ save_every=200) — the nu_sweep_v1 npz is the ground truth.
   YES** (A-Physics, Step 6 : L_z = MSE(z_t, νD_est), 3 graines — Spearman 0.965 ± 0.004,
   IC95 [0.956, 0.974], pente physique 0.87–0.96, médian z/D ≈ 0.013 ≈ ν, beats ν-oracle) —
   and **A1 (Step 6)**: preserved in rank, calibration AND intra-trajectory dynamics
-  (verdict TRACEUR DYNAMIQUE, 6/6 prereg criteria, prereg `5623042`) — preservation of an
+  (verdict TRACEUR DYNAMIQUE, 6/6 prereg criteria, prereg `5623042`) — and **in interpolation**
+  (B1, Step 7 : ν=0.05 held-out, Spearman 0.985, beats ν-oracle and E_t, médian z/D 0.047 ≈ ν,
+  verdict PARTIAL — C6 rec RMSE seul échec, échoue aussi sans L_z) — preservation of an
   injected observable, not discovery.
 - Can νD be **discovered without injection** (an unsupervised objective selecting the
   energy-slope channel on its own)? → **Open.**
