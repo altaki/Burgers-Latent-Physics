@@ -91,12 +91,79 @@ def _load_train_experiment_c_module():
 # 2. Utilitaires
 # =============================================================================
 
-def set_global_seed(seed: int) -> None:
+def set_global_seed(seed: int, num_threads: Optional[int] = None, deterministic: bool = True) -> None:
+    """Seed global + correctif de déterminisme (prereg TD 515cf5b, §9) :
+    `torch.use_deterministic_algorithms(True)` et nombre de threads fixé
+    (par défaut 4) pour que deux exécutions identiques soient bit-à-bit
+    reproductibles sur CPU. `num_threads=None` laisse le défaut torch."""
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+    if deterministic:
+        torch.use_deterministic_algorithms(True)
+    if num_threads is not None:
+        torch.set_num_threads(int(num_threads))
+
+
+# =============================================================================
+# 2b. Traçabilité (prereg TD 515cf5b, §9) : hash git, working tree, versions
+# =============================================================================
+
+REPO_ROOT = Path(__file__).resolve().parent
+
+
+def _git(args: List[str]) -> Optional[str]:
+    import subprocess
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(REPO_ROOT), *args],
+            capture_output=True, text=True, timeout=30,
+        )
+        if out.returncode == 0:
+            return out.stdout.strip()
+    except Exception:
+        pass
+    return None
+
+
+def git_traceability() -> Dict[str, Any]:
+    """Hash git, état du working tree (fichiers suivis hors __pycache__), versions."""
+    dirty_files = []
+    status = _git(["status", "--porcelain"]) or ""
+    for line in status.splitlines():
+        if not line.strip():
+            continue
+        path = line[3:].strip().strip('"')
+        if "__pycache__" in path or path.endswith(".pyc"):
+            continue  # caches bytecode : non significatifs pour la reproductibilité du code
+        dirty_files.append(path)
+    return {
+        "git_hash": _git(["rev-parse", "HEAD"]),
+        "git_branch": _git(["rev-parse", "--abbrev-ref", "HEAD"]),
+        "working_tree_dirty": bool(dirty_files),
+        "dirty_files": dirty_files,
+        "torch_version": torch.__version__,
+        "numpy_version": np.__version__,
+        "python_version": __import__("sys").version,
+        "num_threads": torch.get_num_threads(),
+        "deterministic_algorithms": True,
+    }
+
+
+def assert_clean_working_tree(trace: Dict[str, Any], allow_smoke: bool = False) -> None:
+    """Refuse de démarrer un run de production si le working tree est modifié
+    (règle 0.3, prereg TD 515cf5b §9). Les __pycache__/*.pyc sont exclus."""
+    if allow_smoke:
+        return
+    if trace.get("working_tree_dirty"):
+        raise SystemExit(
+            "working tree modifié (fichiers suivis hors __pycache__) : "
+            + ", ".join(trace["dirty_files"])
+            + " — run refusé (règle 0.3). Commiter ou restaurer ces fichiers, "
+            "ou lancer avec --smoke."
+        )
 
 
 def ensure_dir(path: str | Path) -> Path:
@@ -216,7 +283,15 @@ def build_a_seq_dataloaders(
     bundle: Dict[str, Any],
     batch_size: int = 256,
     num_workers: int = 0,
+    seed: Optional[int] = None,
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
+    # Générateur explicite seedé pour le shuffle (correctif déterminisme,
+    # prereg TD 515cf5b §9) : deux exécutions de même graine ont le même ordre.
+    gen = None
+    if seed is not None:
+        gen = torch.Generator()
+        gen.manual_seed(int(seed))
+
     def _loader(ds: Any, shuffle: bool) -> DataLoader:
         return DataLoader(
             ds,
@@ -224,6 +299,7 @@ def build_a_seq_dataloaders(
             shuffle=shuffle,
             num_workers=num_workers,
             pin_memory=torch.cuda.is_available(),
+            generator=gen if shuffle else None,
         )
 
     return (
@@ -824,6 +900,11 @@ def train_and_evaluate_a_seq(
     num_workers: int = 0,
     print_every: int = 10,
     verbose: bool = True,
+    encoder_mode: str = "td0",
+    run_tag: Optional[str] = None,
+    num_threads: int = 4,
+    require_clean_tree: bool = True,
+    smoke: bool = False,
 ) -> Dict[str, Any]:
     """Pipeline window-A pour un protocole : datasets -> entraînement (early
     stopping) -> meilleur checkpoint -> prédiction test -> métriques z vs nu*D
@@ -831,11 +912,26 @@ def train_and_evaluate_a_seq(
 
     `z_target_mode` (Experiment A-Physics) : "none" (window-A historique),
     "energy_centered" (z ancré sur nuD_est_t = différence centrée de E,
-    auto-supervisé) ou "supervised" (z ancré sur nu_dissipation_t stocké)."""
+    auto-supervisé) ou "supervised" (z ancré sur nu_dissipation_t stocké).
+
+    `encoder_mode` (expérience TD, prereg 515cf5b) : "td0" = encodeur Conv1D
+    actuel (défaut, inchangé) ; "td1"/"td2"/"td3" = encodeurs TD (différences
+    temporelles, GAP, canal produit). `run_tag` (ex. "td2") préfixe le suffixe
+    de run ; None = nommage historique `w{w}_{protocole}`.
+    `require_clean_tree` : refuse le run si le working tree est modifié
+    (règle 0.3, sauf smoke=True)."""
     if protocol not in ("standard", "heldout_nu", "heldout_nu005"):
         raise ValueError("`protocol` doit être 'standard', 'heldout_nu' ou 'heldout_nu005'.")
 
-    set_global_seed(seed)
+    traceability = git_traceability()
+    traceability["start_time"] = __import__("datetime").datetime.now().isoformat(timespec="seconds")
+    assert_clean_working_tree(traceability, allow_smoke=smoke or not require_clean_tree)
+    if verbose:
+        print(f"[traçabilité] git={traceability['git_hash']} dirty={traceability['working_tree_dirty']} "
+              f"torch={traceability['torch_version']} numpy={traceability['numpy_version']} "
+              f"threads={traceability['num_threads']}")
+
+    set_global_seed(seed, num_threads=num_threads)
     device_obj = torch.device(device or "cpu")
     output_dir = ensure_dir(output_dir)
 
@@ -890,22 +986,41 @@ def train_and_evaluate_a_seq(
         z_target_standardizer = {"mean": z_mean, "std": z_std, "fit_on": "train", "key": z_key}
 
     # 2) modèle + entraînement
-    model = ec_models.build_window_dynamics_autoencoder(
-        window_size=window_size,
-        nx=nx,
-        latent_dim=latent_dim,
-        conv_channels=conv_channels,
-        kernel_size=kernel_size,
-        conv_stride=conv_stride,
-        trunk_dims=trunk_dims,
-        decoder_hidden_dims=decoder_hidden_dims,
-        predictor_hidden_dims=predictor_hidden_dims,
-        scalar_head_hidden_dims=scalar_head_hidden_dims,
-        activation=activation,
-        dropout=dropout,
-    )
+    if encoder_mode == "td0":
+        model = ec_models.build_window_dynamics_autoencoder(
+            window_size=window_size,
+            nx=nx,
+            latent_dim=latent_dim,
+            conv_channels=conv_channels,
+            kernel_size=kernel_size,
+            conv_stride=conv_stride,
+            trunk_dims=trunk_dims,
+            decoder_hidden_dims=decoder_hidden_dims,
+            predictor_hidden_dims=predictor_hidden_dims,
+            scalar_head_hidden_dims=scalar_head_hidden_dims,
+            activation=activation,
+            dropout=dropout,
+        )
+    else:
+        model = ec_models.build_window_dynamics_autoencoder_td(
+            encoder_mode=encoder_mode,
+            window_size=window_size,
+            nx=nx,
+            dt=float(train_ds.dt),
+            latent_dim=latent_dim,
+            conv_channels=conv_channels,
+            kernel_size=kernel_size,
+            conv_stride=conv_stride,
+            trunk_dims=trunk_dims,
+            decoder_hidden_dims=decoder_hidden_dims,
+            predictor_hidden_dims=predictor_hidden_dims,
+            scalar_head_hidden_dims=scalar_head_hidden_dims,
+            activation=activation,
+            dropout=dropout,
+        )
     model_config = {
         "model": "window_dynamics_autoencoder",
+        "encoder_mode": encoder_mode,
         "window_size": int(window_size),
         "nx": int(nx),
         "latent_dim": latent_dim,
@@ -924,7 +1039,7 @@ def train_and_evaluate_a_seq(
         print(f"Modèle : {models_module.summarize_model(model, 'window_dynamics_autoencoder').to_dict()}")
 
     train_loader, val_loader, test_loader = build_a_seq_dataloaders(
-        bundle, batch_size=batch_size, num_workers=num_workers
+        bundle, batch_size=batch_size, num_workers=num_workers, seed=seed
     )
 
     train_result = train_window_autoencoder(
@@ -987,10 +1102,15 @@ def train_and_evaluate_a_seq(
     range_strat = range_stratified_metrics(z, meta, nuD_train_max, nu_value=nu_strat)
 
     # 5) sauvegarde
+    traceability["end_time"] = __import__("datetime").datetime.now().isoformat(timespec="seconds")
     results: Dict[str, Any] = {
         "experiment": "experiment_a_seq",
         "protocol": protocol,
         "window_size": int(window_size),
+        "encoder_mode": encoder_mode,
+        "run_tag": run_tag,
+        "num_threads": int(num_threads),
+        "traceability": traceability,
         "heldout_nu_values": list(heldout_nu_values) if protocol.startswith("heldout") else None,
         "z_target_mode": z_target_mode,
         "standardize_z_target": bool(standardize_z_target and z_key is not None),
@@ -1013,7 +1133,8 @@ def train_and_evaluate_a_seq(
     }
 
     # suffixe de run : "w{w}_{protocol}" (+ "_z{mode}" si terme physique actif)
-    run_suffix = f"w{window_size}_{protocol}"
+    # run_tag (expérience TD) remplace le préfixe "w{w}" : "td{bras}_{protocol}"
+    run_suffix = f"{run_tag}_{protocol}" if run_tag else f"w{window_size}_{protocol}"
     if z_target_mode != "none":
         run_suffix += f"_z{z_target_mode}"
     metrics_json_path = output_dir / f"metrics_window_a_{run_suffix}.json"

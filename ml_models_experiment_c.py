@@ -537,6 +537,245 @@ def build_window_dynamics_autoencoder(
 
 
 # =============================================================================
+# 8b. Encodeurs TD (expérience TD, prereg outputs/prereg/td_encoder_prereg.json,
+#     commit 515cf5b) — ADDITIF, td0 = chemin existant inchangé.
+#
+# TDChannelTransform : (B, w, Nx) -> (B, C, Nx)
+#   - canaux de la fenêtre brute (w canaux, inchangés, en tête)
+#   - + canaux de différences temporelles Δ_k u = (u_t - u_{t-k}) / (k*dt),
+#     k ∈ diff_ks, avec u_t = dernier canal temporel (dim 0 = temps)
+#   - + canal produit u_t ⊙ Δ_1 u si add_product (TD3 : injection architecturale
+#     de l'identité dE/dt = -νD via mean_x(u_t ⊙ ∂_t u) ≈ (1/Nx) dE/dt)
+# Conv1DEncoderTD : Conv1DEncoder avec pooling "flatten" (identique à Conv1DEncoder)
+#   ou "gap" (global average pooling spatial, moyenne sur la longueur de sortie).
+# =============================================================================
+
+TD_DIFF_KS: Tuple[int, ...] = (1, 2, 4, 8, 16)
+TD_ENCODER_MODES: Tuple[str, ...] = ("td0", "td1", "td2", "td3")
+
+
+class TDChannelTransform(nn.Module):
+    """(B, w, Nx) -> (B, C, Nx) : fenêtre brute + canaux de différences (+ produit)."""
+
+    def __init__(
+        self,
+        window_size: int,
+        dt: float,
+        diff_ks: Sequence[int] = TD_DIFF_KS,
+        add_product: bool = False,
+    ) -> None:
+        super().__init__()
+        if window_size < 2:
+            raise ValueError("`window_size` doit être >= 2 pour les différences temporelles.")
+        self.window_size = int(window_size)
+        self.dt = float(dt)
+        self.diff_ks = tuple(int(k) for k in diff_ks)
+        for k in self.diff_ks:
+            if k < 1 or k >= window_size:
+                raise ValueError(f"chaque k de diff_ks doit vérifier 1 <= k < window_size ({window_size}), reçu {k}.")
+        self.add_product = bool(add_product)
+        self.out_channels = self.window_size + len(self.diff_ks) + (1 if self.add_product else 0)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # x : (B, w, Nx), temps sur la dim 1, u_t = x[:, -1, :]
+        u_t = x[:, -1, :]
+        chans: List[torch.Tensor] = [x]
+        for k in self.diff_ks:
+            du = (u_t - x[:, -1 - k, :]) / (k * self.dt)
+            chans.append(du.unsqueeze(1))
+        if self.add_product:
+            du1 = (u_t - x[:, -2, :]) / self.dt
+            chans.append((u_t * du1).unsqueeze(1))
+        return torch.cat(chans, dim=1)
+
+
+class Conv1DEncoderTD(nn.Module):
+    """
+    Encodeur TD : TDChannelTransform -> blocs conv (mêmes hyperparamètres que
+    Conv1DEncoder) -> pooling ("flatten" | "gap") -> trunk MLP -> latent.
+
+    - pooling="flatten" : identique à Conv1DEncoder (TD0/TD1).
+    - pooling="gap"     : moyenne spatiale sur la longueur de sortie conv
+      (TD2/TD3) : biais inductif d'invariance par translation, comme les
+      observables cibles (νD = ν∫u_x² dx est invariant par translation).
+    """
+
+    def __init__(
+        self,
+        in_channels: int,
+        nx: int,
+        latent_dim: int = 128,
+        channels: Sequence[int] = (16, 32, 32, 64, 64),
+        kernel_size: int = 5,
+        stride: int = 2,
+        trunk_dims: Sequence[int] = (256,),
+        pooling: str = "flatten",
+        activation: str = "relu",
+        dropout: float = 0.0,
+    ) -> None:
+        super().__init__()
+        models_module = _load_models_module()
+        if pooling not in ("flatten", "gap"):
+            raise ValueError("`pooling` doit être 'flatten' ou 'gap'.")
+        self.pooling = pooling
+        self.in_channels = int(in_channels)
+        self.nx = int(nx)
+        self.latent_dim = int(latent_dim)
+        self.channels = tuple(int(c) for c in channels)
+        self.kernel_size = int(kernel_size)
+        self.stride = int(stride)
+
+        layers: List[nn.Module] = []
+        c_in = self.in_channels
+        length = self.nx
+        padding = self.kernel_size // 2
+        for c_out in self.channels:
+            layers.append(nn.Conv1d(c_in, c_out, self.kernel_size, stride=self.stride, padding=padding))
+            layers.append(models_module.get_activation(activation))
+            if dropout > 0.0:
+                layers.append(nn.Dropout(dropout))
+            c_in = c_out
+            length = (length + 2 * padding - self.kernel_size) // self.stride + 1
+
+        self.conv = nn.Sequential(*layers)
+        self.out_length = length
+        self.flatten_dim = length * self.channels[-1]
+        trunk_input = self.channels[-1] if pooling == "gap" else self.flatten_dim
+        self.to_latent = models_module.build_mlp(
+            input_dim=trunk_input,
+            hidden_dims=trunk_dims,
+            output_dim=self.latent_dim,
+            activation=activation,
+            dropout=dropout,
+            final_activation=None,
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        feats = self.conv(x)  # (B, C_out, L_out)
+        if self.pooling == "gap":
+            pooled = feats.mean(dim=2)  # (B, C_out)
+        else:
+            pooled = feats.reshape(feats.shape[0], -1)  # (B, flatten_dim)
+        return self.to_latent(pooled)
+
+
+def build_td_encoder(
+    encoder_mode: str,
+    window_size: int,
+    nx: int,
+    dt: float,
+    latent_dim: int = 8,
+    conv_channels: Sequence[int] = (16, 32, 32, 64, 64),
+    kernel_size: int = 5,
+    conv_stride: int = 2,
+    trunk_dims: Sequence[int] = (256,),
+    activation: str = "relu",
+    dropout: float = 0.0,
+) -> nn.Module:
+    """
+    Construit l'encodeur d'un bras TD (prereg td_encoder_prereg.json, commit 515cf5b) :
+
+    - "td0" : Conv1DEncoder(in_channels=window_size) — encodeur actuel, inchangé.
+    - "td1" : fenêtre brute + Δ_k u (k ∈ {1,2,4,8,16}), flatten.
+    - "td2" : idem td1 + global average pooling spatial.
+    - "td3" : td2 + canal produit u_t ⊙ Δ_1 u (injection architecturale, diagnostic).
+    """
+    if encoder_mode not in TD_ENCODER_MODES:
+        raise ValueError(f"`encoder_mode` doit être dans {TD_ENCODER_MODES}, reçu {encoder_mode!r}.")
+    if encoder_mode == "td0":
+        return Conv1DEncoder(
+            in_channels=int(window_size),
+            nx=int(nx),
+            latent_dim=latent_dim,
+            channels=conv_channels,
+            kernel_size=kernel_size,
+            stride=conv_stride,
+            trunk_dims=trunk_dims,
+            activation=activation,
+            dropout=dropout,
+        )
+    transform = TDChannelTransform(
+        window_size=window_size,
+        dt=dt,
+        diff_ks=TD_DIFF_KS,
+        add_product=(encoder_mode == "td3"),
+    )
+    pooling = "gap" if encoder_mode in ("td2", "td3") else "flatten"
+    conv = Conv1DEncoderTD(
+        in_channels=transform.out_channels,
+        nx=int(nx),
+        latent_dim=latent_dim,
+        channels=conv_channels,
+        kernel_size=kernel_size,
+        stride=conv_stride,
+        trunk_dims=trunk_dims,
+        pooling=pooling,
+        activation=activation,
+        dropout=dropout,
+    )
+
+    class _TDEncoder(nn.Module):
+        """Chaîne transform -> conv pour être branchée comme `encoder` du modèle."""
+
+        def __init__(self, transform: TDChannelTransform, conv: Conv1DEncoderTD) -> None:
+            super().__init__()
+            self.transform = transform
+            self.conv = conv
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            return self.conv(self.transform(x))
+
+    return _TDEncoder(transform, conv)
+
+
+def build_window_dynamics_autoencoder_td(
+    encoder_mode: str,
+    window_size: int,
+    nx: int,
+    dt: float,
+    latent_dim: int = 8,
+    conv_channels: Sequence[int] = (16, 32, 32, 64, 64),
+    kernel_size: int = 5,
+    conv_stride: int = 2,
+    trunk_dims: Sequence[int] = (256,),
+    decoder_hidden_dims: Sequence[int] = (64, 128),
+    predictor_hidden_dims: Sequence[int] = (64, 64),
+    scalar_head_hidden_dims: Sequence[int] = (),
+    activation: str = "relu",
+    dropout: float = 0.0,
+) -> Any:
+    """Variante TD de `build_window_dynamics_autoencoder` (même modèle, encodeur TD)."""
+    models_module = _load_models_module()
+    encoder = build_td_encoder(
+        encoder_mode=encoder_mode,
+        window_size=window_size,
+        nx=nx,
+        dt=dt,
+        latent_dim=latent_dim,
+        conv_channels=conv_channels,
+        kernel_size=kernel_size,
+        conv_stride=conv_stride,
+        trunk_dims=trunk_dims,
+        activation=activation,
+        dropout=dropout,
+    )
+    return models_module.LatentDynamicsAutoencoder(
+        input_dim=int(nx),
+        latent_dim=latent_dim,
+        encoder=encoder,
+        output_dim=int(nx),
+        decoder_hidden_dims=decoder_hidden_dims,
+        predictor_hidden_dims=predictor_hidden_dims,
+        activation=activation,
+        dropout=dropout,
+        use_scalar_head=True,
+        scalar_head_hidden_dims=scalar_head_hidden_dims,
+        positive_scalar_output=False,
+        residual_predictor=False,
+    )
+
+
+# =============================================================================
 # 9. Bloc de test minimal (smoke test CPU)
 # =============================================================================
 
