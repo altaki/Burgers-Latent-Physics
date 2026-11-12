@@ -824,15 +824,23 @@ Métriques ν=0.01 held-out (test : 3 800 fenêtres / 50 trajectoires), z en **u
   serait ~100) et **médian z/D @ν=0.01 = 0.0130–0.0142 ≈ ν** (runs none : 0.003 / 0.030 / −0.024,
   aucune échelle fixe).
 - **Contrôles** : λ_mono 0 vs 0.1 → aucun écart (hinge inerte, ~1.5e-5 prédit) ; asup = aphys
-  (cibles identiques à 0.35 %). **Coût reconstruction apparié** : rec RMSE aphys 0.164–0.178 vs
-  none 0.148–0.156 (+0.016 à +0.022) — c'est ce coût qui fait échouer le seuil 0.15 (**seuil
-  inchangé**), d'où PARTIAL et non IDENTIFIABLE. Ces rec RMSE sont celles du protocole
-  **standard** (`verdict_a_seq`, `ml_train_experiment_a_seq.py:727` `s = standard_results`).
-  Note provenance s42 : le summary (0.1775, mtime 2026-11-11 14:30, non commité — seul
-  `experiment_a_seq_summary_aseq.json` est suivi) date d'une exécution antérieure ; les artefacts
-  commités du run standard s42 (16:40, `97c6357`) donnent 0.1663. Plage sur artefacts commités :
-  0.164–0.170. s7/s123 : summaries = metrics commités (identiques). L'analyse A1 exploratoire
-  standard s42 (`main_analyze_a1_intra_trajectory.py:46`) utilise le npz commité (16:40).
+  (cibles identiques à 0.35 %). **Coût reconstruction apparié** (artefacts commités, protocole
+  standard) : rec RMSE aphys 0.1663/0.1702/0.1642 vs none 0.1557/0.1488/0.1484 → surcoût
+  **+0.011 à +0.021** (moy +0.016) — c'est ce coût qui fait échouer le seuil 0.15 (**seuil
+  inchangé**), d'où PARTIAL et non IDENTIFIABLE. (La valeur publiée +0.016 à +0.022 utilisait
+  0.1775 pour s42, exécution antérieure non archivée — voir note de provenance ci-dessous.)
+  Ces rec RMSE sont celles du protocole **standard** (`verdict_a_seq`,
+  `ml_train_experiment_a_seq.py:727` `s = standard_results`). Note provenance s42 : le summary
+  (0.1775, mtime 2026-11-11 14:30, non commité — seul `experiment_a_seq_summary_aseq.json` est
+  suivi) et les artefacts commités (16:40, `97c6357`, rec 0.1663) sont deux exécutions du **même
+  commit `212db0f`** (13:57) à la même graine 42 → **non-déterminisme à graine fixée constaté**
+  (0.1775 vs 0.1663) ; cause non tranchée (working tree local non commité entre les deux, ou
+  source de hasard non seedée — `set_global_seed` fixe random/np/torch/cuda,
+  `ml_train_experiment_a_seq.py:94-99`, device CPU par défaut `:829`, num_workers=0).
+  Vérification par 2 smoke runs même graine à lancer côté env torch (commande dans Limites
+  Step 7). Plage sur artefacts commités : 0.164–0.170. s7/s123 : summaries = metrics commités.
+  L'analyse A1 exploratoire standard s42 (`main_analyze_a1_intra_trajectory.py:46`) utilise le
+  npz commité (16:40).
 - **Stratifications depuis `predictions_test.npz`** (sans réentraînement,
   `outputs/logs/aphysis_stratifications.json`) : à ν=0.01, **0 % des fenêtres hors plage**
   (max νD test 1.4509 < max train 1.8121) ; par phase (dD/dt > 0 = raidissement ; **22 % affiché =
@@ -930,9 +938,11 @@ antérieure) — les 0.193–0.206 sont les metrics du run **heldout_nu**, runs 
 d'incohérence. Plancher PCA linéaire de nu_sweep_v1 (population = test complet 150×101 snapshots,
 standardisation = GlobalStandardizer fit sur train complet, `ml_datasets.py:154-165`, unités =
 états standardisés, identiques à la rec RMSE) : rang 4 → 0.359, 5 → 0.298, 6 → 0.225, 8 → 0.188,
-16 → 0.103. Le modèle (0.190–0.205) bat le plancher au rang effectif 5–6 ; le seuil 0.15 a été
-calibré sur le dataset legacy Nx=128 (README:76,167,204 : rec RMSE 0.0874 PASS sur legacy) et est
-inatteignable en linéaire sur nu_sweep_v1 (Nx=1024, README:261) en dessous du rang ~16.
+16 → 0.103. **Au rang effectif 5–6 (plancher 0.225–0.298), aphys B1 (0.190–0.205) bat le
+plancher ; à k = latent_dim = 8 (plancher 0.188), aphys B1 (moy 0.196) ne le bat pas, none
+(0.169–0.181) oui.** Le seuil 0.15 a été calibré sur le dataset legacy Nx=128 (README:76,167,204 :
+rec RMSE 0.0874 PASS sur legacy) et est inatteignable en linéaire sur nu_sweep_v1 (Nx=1024,
+README:261) en dessous du rang ~16.
 
 ### Exploratoire (étiqueté, non seuillé)
 A1 à ν=0.05 (50 traj ; pics νD sur [0,100] : 19 intérieurs [24,99], 17 avec ≥5 pas avant le pic,
@@ -974,7 +984,12 @@ Interpolation vs extrapolation (mêmes graines, apparié) :
 
 ### Limites
 C6 échoue avec IC [0.177, 0.215] excluant 0.15 — structurel (même constat au Step 6, tous
-protocoles, y compris none). C5 : deux définitions ont coexisté (PR vs rang 95 %), corrigé ;
+protocoles, y compris none). Non-déterminisme à graine fixée constaté au Step 6 (run standard
+s42 : 0.1775 vs 0.1663, même commit `212db0f`, même graine — voir note de provenance Step 6) :
+impact sur l'appariement par graine (la variance inter-graines inclut cette composante) ;
+vérification par 2 smoke runs même graine à lancer côté env torch :
+`python3 main_train_b1.py --z-target-mode none --seed 42 --smoke` (×2, comparer best_val_loss
+et rec RMSE des deux sorties /tmp). C5 : deux définitions ont coexisté (PR vs rang 95 %), corrigé ;
 les deux ≥ 3 sauf PR s42. A1 à ν=0.05 exploratoire (n=19/32), M4 retard systématique non seuillé.
 Appariement vs none à n=3, complémentaire. Environnement homogène (6/6 Windows) mais versions
 torch/numpy non consignées dans les logs. ν-oracle Step 6 : écart doc/code (moyenne globale du
