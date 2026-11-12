@@ -133,19 +133,31 @@ def main():
     spearman_Et = spearman(zE_te_005, nuD_te_005)
     r2_Et = float(1 - np.sum((zE_te_005 - nuD_te_005) ** 2) / np.sum((nuD_te_005 - nuD_te_005.mean()) ** 2))
 
-    # runs B1
+    # runs B1. Écart consigné : le prereg fc1075b prévoit run_pattern
+    # "window_w25_heldout_nu005..." mais main_train_b1.py nomme "w25_heldout_nu005..."
+    # (suffix f"w{W}_{PROTOCOL}") ; on accepte les deux (prereg non modifié).
+    def resolve_run_dir(pat: str) -> Path:
+        cands = [MODELS / pat]
+        if pat.startswith("window_w"):
+            cands.append(MODELS / ("w" + pat[len("window_w"):]))
+        for c in cands:
+            if (c / "predictions_test.npz").exists():
+                return c
+        return cands[0]
+
     runs = {}
     for tag_info in prereg["runs"]:
         tag = tag_info["tag"]
         runs[tag] = []
         for seed in tag_info["seeds"]:
             pat = tag_info["run_pattern"].replace("{seed}", str(seed))
-            p = MODELS / pat / "predictions_test.npz"
+            rdir = resolve_run_dir(pat)
+            p = rdir / "predictions_test.npz"
             if not p.exists():
                 runs[tag].append({"seed": seed, "run": pat, "present": False})
                 continue
             mm = run_metrics_nu005(p)
-            mm.update({"seed": seed, "run": pat, "present": True})
+            mm.update({"seed": seed, "run": rdir.name, "present": True})
             runs[tag].append(mm)
 
     # évaluation des conditions sur la moyenne 3 graines du bras aphys_mono0
@@ -238,6 +250,18 @@ def main():
     if not test_ok:
         print("ÉCHEC test d'égalité : manquants =", json_ids - eval_ids, " en trop =", eval_ids - json_ids)
         sys.exit(1)
+
+    # NaN -> exit 1 (pas de result=False silencieux) quand des runs sont présents
+    if aphys:
+        nan_hits = [cid for cid, e in eval_conditions.items()
+                    if isinstance(e.get("value"), float) and e["value"] != e["value"]]
+        c8 = eval_conditions.get("C8_beats_baseline_Et", {})
+        for met, dd in (c8.get("detail") or {}).items():
+            if dd.get("mean") != dd.get("mean"):
+                nan_hits.append(f"C8_beats_baseline_Et/{met}")
+        if nan_hits:
+            print("ÉCHEC : métriques NaN avec runs présents :", nan_hits)
+            sys.exit(1)
 
     all_ok = all(eval_conditions[c["id"]]["result"] for c in conds)
     if not aphys:
