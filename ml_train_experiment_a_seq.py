@@ -129,9 +129,13 @@ def _git(args: List[str]) -> Optional[str]:
 
 
 def git_traceability() -> Dict[str, Any]:
-    """Hash git, état du working tree (fichiers suivis hors __pycache__), versions."""
+    """Hash git, état du working tree, versions.
+
+    Seuls les fichiers SUIVIS modifiés comptent (`--untracked-files=no`) :
+    les artefacts non suivis (npz data, logs, modèles, sorties de runs) ne
+    bloquent jamais. Les __pycache__/*.pyc (suivis ici) sont exclus."""
     dirty_files = []
-    status = _git(["status", "--porcelain"]) or ""
+    status = _git(["status", "--porcelain", "--untracked-files=no"]) or ""
     for line in status.splitlines():
         if not line.strip():
             continue
@@ -923,6 +927,7 @@ def train_and_evaluate_a_seq(
     if protocol not in ("standard", "heldout_nu", "heldout_nu005"):
         raise ValueError("`protocol` doit être 'standard', 'heldout_nu' ou 'heldout_nu005'.")
 
+    set_global_seed(seed, num_threads=num_threads)
     traceability = git_traceability()
     traceability["start_time"] = __import__("datetime").datetime.now().isoformat(timespec="seconds")
     assert_clean_working_tree(traceability, allow_smoke=smoke or not require_clean_tree)
@@ -931,7 +936,6 @@ def train_and_evaluate_a_seq(
               f"torch={traceability['torch_version']} numpy={traceability['numpy_version']} "
               f"threads={traceability['num_threads']}")
 
-    set_global_seed(seed, num_threads=num_threads)
     device_obj = torch.device(device or "cpu")
     output_dir = ensure_dir(output_dir)
 
