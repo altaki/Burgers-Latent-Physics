@@ -837,8 +837,9 @@ Métriques ν=0.01 held-out (test : 3 800 fenêtres / 50 trajectoires), z en **u
   (0.1775 vs 0.1663) ; cause non tranchée (working tree local non commité entre les deux, ou
   source de hasard non seedée — `set_global_seed` fixe random/np/torch/cuda,
   `ml_train_experiment_a_seq.py:94-99`, device CPU par défaut `:829`, num_workers=0).
-  Vérification par 2 smoke runs même graine à lancer côté env torch (commande dans Limites
-  Step 7). Plage sur artefacts commités : 0.164–0.170. s7/s123 : summaries = metrics commités.
+  Vérification par 2 smoke runs même graine (faits le 2026-11-12, résultats dans Limites
+  Step 7 : pipeline déterministe) → cause la plus probable : working tree local non commité
+  entre les deux exécutions. Plage sur artefacts commités : 0.164–0.170. s7/s123 : summaries = metrics commités.
   L'analyse A1 exploratoire standard s42 (`main_analyze_a1_intra_trajectory.py:46`) utilise le
   npz commité (16:40).
 - **Stratifications depuis `predictions_test.npz`** (sans réentraînement,
@@ -987,12 +988,17 @@ C6 échoue avec IC [0.177, 0.215] excluant 0.15 — structurel (même constat au
 protocoles, y compris none). Non-déterminisme à graine fixée constaté au Step 6 (run standard
 s42 : 0.1775 vs 0.1663, même commit `212db0f`, même graine — voir note de provenance Step 6) :
 impact sur l'appariement par graine (la variance inter-graines inclut cette composante) ;
-vérification par 2 smoke runs même graine à lancer côté env torch :
-`python3 main_train_b1.py --z-target-mode none --seed 42 --smoke` (×2, comparer best_val_loss
-et rec RMSE des deux sorties /tmp). C5 : deux définitions ont coexisté (PR vs rang 95 %), corrigé ;
-les deux ≥ 3 sauf PR s42. A1 à ν=0.05 exploratoire (n=19/32), M4 retard systématique non seuillé.
-Appariement vs none à n=3, complémentaire. Environnement homogène (6/6 Windows) mais versions
-torch/numpy non consignées dans les logs. ν-oracle Step 6 : écart doc/code (moyenne globale du
+**Vérification déterminisme** (2026-11-12) : 2 smoke runs `python3 main_train_b1.py
+--z-target-mode none --seed 42 --smoke` → logs **identiques hors chemins /tmp**
+(`outputs/logs/determinism_smoke_run{1,2}.log` : train_loss 9.620083e-01, val_loss 9.639770e-01,
+rec RMSE 9.4553e-01, rang 5.0, monotone 0.5770) → pipeline déterministe pour ce test ; la
+différence s42 (0.1775 vs 0.1663) n'est donc PAS expliquée par le pipeline → hypothèse retenue :
+working tree local modifié (non committé) ou args différents entre les exécutions de 14:30 et
+16:35. Environnement Windows consigné : `outputs/logs/b1_eval_archive/pip_freeze_windows.txt`
+(torch 2.12.0+cpu, numpy 2.4.1). C5 : deux définitions ont coexisté (PR vs rang 95 %), corrigé ;
+les deux ≥ 3 sauf PR s42. A1 à ν=0.05 exploratoire (n=19/26), M4 retard systématique non seuillé.
+Appariement vs none à n=3, complémentaire. Environnement homogène (6/6 Windows, versions
+consignées dans pip_freeze_windows.txt). ν-oracle Step 6 : écart doc/code (moyenne globale du
 train filtré 1.4287638073 utilisée vs train complet 1.4287588915 annoncé README:342, écart
 4.9e-6, impact nul sur beats_nu_oracle) ; corrigé à partir de B1 (`train_dataset_full`).
 
