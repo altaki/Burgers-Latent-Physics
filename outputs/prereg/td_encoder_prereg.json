@@ -1,0 +1,95 @@
+{
+ "experiment": "TD_encoder_inductive_bias",
+ "prereg_md": "outputs/prereg/td_encoder_prereg.md",
+ "question": "l'ecart entre aphys (R2 0.844) et l'estimateur a 2 snapshots (backward_w25 R2 0.9995 a nu=0.01 held-out) est-il REPRESENTATIONNEL (encodeur Conv1D+ReLU+flatten) ou du a autre chose (goulot latent, pertes auxiliaires, optimisation) ?",
+ "plafond_analytique": {
+  "backward_w25_nu001": {"r2": 0.9995, "spearman": 1.0, "source": "outputs/logs/experiment_a_seq_analytic_baseline.json"},
+  "centered_w25_nu001": {"r2": 0.9999, "spearman": 1.0},
+  "causal_w25_nu001": {"r2": 0.7801, "spearman": 0.9870},
+  "causal_w25_nu005": {"r2": 0.9166, "spearman": 0.9923}
+ },
+ "bras": [
+  {"id": "td0", "encodeur": "Conv1DEncoder actuel (reference)", "in_channels": 25, "canaux": "fenetre brute w=25", "pooling": "flatten", "statut": "REFERENCE"},
+  {"id": "td1", "encodeur": "td0 + canaux de differences temporelles explicites", "in_channels": 30, "canaux": "fenetre brute + Delta_k u = (u_t - u_{t-k})/(k*dt), k in {1,2,4,8,16}, dt=0.02", "pooling": "flatten", "statut": "CONFIRMATOIRE"},
+  {"id": "td2", "encodeur": "td1 + global average pooling spatial", "in_channels": 30, "canaux": "idem td1", "pooling": "gap (moyenne sur longueur de sortie conv), entree trunk = 64", "statut": "CONFIRMATOIRE (comparaison principale)"},
+  {"id": "td3", "encodeur": "td2 + canal multiplicatif u_t * Delta_1 u", "in_channels": 31, "canaux": "td2 + u_t otimes Delta_1 u ; mean_x(u_t otimes Delta_1 u) ~ (1/Nx) dE/dt = -nuD/Nx : INJECTION ARCHITECTURALE de l'identite dE/dt=-nuD", "pooling": "gap", "statut": "EXPLORATOIRE (diagnostic d'injection, PAS une decouverte)"}
+ ],
+ "modes": [
+  {"z_target_mode": "energy_centered", "z_weight": 1.0, "run_suffix": "_zenergy_centered"},
+  {"z_target_mode": "none", "z_weight": 0.0, "run_suffix": ""}
+ ],
+ "seeds": [42, 7, 123, 2024, 999],
+ "protocoles": [
+  {"name": "heldout_nu", "train_val_nu": [0.05, 0.2], "nu_eval_principal": 0.01, "role": "principal"},
+  {"name": "heldout_nu005", "train_val_nu": [0.01, 0.2], "nu_eval_principal": 0.05, "role": "secondaire (replication B1)"}
+ ],
+ "run_pattern": "td{bras}_{protocole}[_z{mode}]_s{seed}",
+ "hyperparams": {
+  "window_size": 25, "dt": 0.02, "stride": 1, "t_index": [24, 99],
+  "batch_size": 256, "learning_rate": 0.001, "optimizer": "adam", "num_epochs": 200, "patience": 10, "weight_decay": 0.0,
+  "latent_dim": 8, "conv_channels": [16, 32, 32, 64, 64], "kernel_size": 5, "conv_stride": 2,
+  "trunk_dims": [256], "trunk_input_td2_td3": 64, "decoder_hidden_dims": [64, 128], "predictor_hidden_dims": [64, 64],
+  "scalar_head_hidden_dims": [], "activation": "relu", "dropout": 0.0,
+  "reconstruction_weight": 1.0, "prediction_weight": 1.0, "z_weight": 1.0, "variance_weight": 0.01, "min_latent_variance": 0.01,
+  "monotonicity_weight": 0.0, "standardize_z_target": true, "standardizer_fit_on": "train du protocole",
+  "input_standardizer": "GlobalStandardizer fit sur train complet raw (ml_datasets.py:154-165)"
+ },
+ "metriques": {
+  "primaires": {
+   "nu": 0.01, "protocole": "heldout_nu", "z_unites": "physiques",
+   "liste": ["spearman_z_nuD", "r2_affine_nuD_z", "calibration_slope", "rel_rmse", "delta_r2_vs_td0_apparie_par_graine", "ecart_au_plafond_r2_moins_0.9995", "M6_raidissement"],
+   "M6_definition": "prereg A1 5623042 : raidissement = t < t_pic, t_pic = argmax global de nuD_vrai sur [0,100] ; M6 = (max-min z)/(max-min nuD_vrai) sur pas en raidissement"
+  },
+  "secondaires": ["C6a", "C6b", "effective_rank_h_95pct", "participation_ratio", "A1_complet_M1_M8", "protocole_heldout_nu005_nu005"]
+ },
+ "decision_rule": {
+  "comparaison_principale": {
+   "id": "D1", "bras_haut": "td2", "bras_bas": "td0", "metric": "r2_affine_nuD_z", "nu": 0.01,
+   "appariement": "par graine (meme seed)", "n": 5, "delta_R": 0.05,
+   "delta_R_justification": "sd inter-graines R2 Step 6 aphys = 0.047 (0.859/0.791/0.881) ; effet < 1 sd non actionnable",
+   "ic": "unilateral_95", "distribution": "t_ddl4", "t_0.95_4": 2.1318, "statut": "CONFIRMATOIRE"
+  },
+  "verdicts": [
+   {"id": "V_REPR", "label": "REPRESENTATIONNEL", "condition": "mean(dR2) >= 0.05 AND lower_unilateral_95(dR2) > 0"},
+   {"id": "V_NONREPR", "label": "NON REPRESENTATIONNEL", "condition": "upper_unilateral_95(dR2) < 0.05"},
+   {"id": "V_INDET", "label": "INDETERMINE", "condition": "sinon"}
+  ],
+  "comparaisons_secondaires": [
+   {"id": "D2", "bras_haut": "td1", "bras_bas": "td0", "metric": "r2_affine_nuD_z", "nu": 0.01, "n": 5, "delta_R": 0.05, "ic": "unilateral_95_t_ddl4", "statut": "CONFIRMATOIRE"},
+   {"id": "D3", "bras_haut": "td3", "bras_bas": "td2", "metric": "r2_affine_nuD_z", "nu": 0.01, "n": 5, "statut": "EXPLORATOIRE (injection architecturale)"}
+  ],
+  "puissance": {
+   "D1_n5": {"sd_diff_0.03_delta_0.05": 0.92, "sd_diff_0.05_delta_0.05": 0.58, "sd_diff_0.05_delta_0.10": 0.98, "prob_NONREPR_si_vrai_delta_0": {"sd_0.03": 0.91, "sd_0.05": 0.54}},
+   "C6a_n5_exact": 0.70, "C6a_n3_exact": 0.39, "note": "prereg 29c7c3e annonce 68% (n=5) et 23% (n=3) par approximation centrale decalee ; valeurs exactes noncentral-t : 70% et 39%"
+  }
+ },
+ "c6_prime_herite_29c7c3e": {
+  "C6a": {"definition": "r_s = rec(bras_z,s)/rec(bras_none,s), s in 5 graines ; vrai si borne sup unilaterale 95% mean(r)+t(0.95,4)*sd(r)/sqrt(5) < 1+delta", "delta": 0.10, "n": 5, "statut": "CONFIRMATOIRE"},
+  "C6b": {"definition": "rec(bras_z) <= plancher PCA k=8 = 0.188 (k fixe = latent_dim)", "threshold": 0.188, "statut": "CONFIRMATOIRE"},
+  "sensibilite_B1_hors_verdict": {"C6a_borne_sup": 1.261, "C6b_rec": 0.196, "note": "B1 echoue les deux (29c7c3e)"}
+ },
+ "predictions": {
+  "td0_nu001": {"r2": [0.78, 0.90], "spearman": [0.95, 0.98], "M6_attendu": 0.81, "falsification": "TD0 hors plage -> code deterministe a change la reference -> STOP"},
+  "td2_si_REPR": {"r2": [0.90, 0.9995]},
+  "td2_si_NONREPR": {"r2": [0.78, 0.90]},
+  "falsification_croisee": "r2(td2) < r2(td0) - 0.05 -> effet negatif rapporte tel quel",
+  "td3_injection": {"r2_attendu_si_canaux_fonctionne": ">= 0.99", "statut": "EXPLORATOIRE"}
+ },
+ "falsification_globale": "si TD2 et TD1 restent dans [0.78, 0.90] avec borne sup < 0.05 -> NON REPRESENTATIONNEL : l'ecart au plafond vient du goulot latent / pertes / optimisation, pas de la representation conv+flatten",
+ "anti_selection_sur_test": "hyperparams figes dans ce prereg avant tout run ; un seul jeu de runs ; aucune iteration sur le test nu=0.01 ; regle de decision limitee aux comparaisons pre-enregistrees ; analyses post-hoc etiquetees EXPLORATOIRE",
+ "exigences_phase0": {
+  "determinisme_0.2": {
+   "correctif": ["torch.use_deterministic_algorithms(True)", "torch.set_num_threads(4) fixe", "torch.Generator explicite seedé par DataLoader shufflé"],
+   "test_automatique": "main_determinism_check.py : 2 runs identiques in-process (2 époques, données tronquées) ; exit 1 si |diff| > 1e-6 sur métriques + prédictions ; DOIT passer sur Windows avant toute run de production",
+   "ecart_s42_historique": "0.1775 vs 0.1663 reste en Limites (cause probable working tree non commité ; le working tree est actuellement modifié)"
+  },
+  "tracabilite_0.3": "chaque metrics contient traceability = {git_hash, working_tree_dirty, torch_version, numpy_version, python_version, start_time, end_time} ; run refuse de démarrer si working tree modifié (fichiers suivis hors __pycache__), sauf --smoke",
+  "cout_0.4": {"run_b1_duree_min": [3.1, 4.6], "runs_totaux": 80, "budget_h_cpu": "4-7 h", "reduction": "aucune (< 3 jours)"}
+ },
+ "statuts": {
+  "CONFIRMATOIRE": ["D1 td2-td0", "D2 td1-td0", "C6a/C6b par bras", "metriques primaires nu=0.01"],
+  "EXPLORATOIRE": ["D3 td3-td2", "M6", "rang effectif", "participation ratio", "A1 complet", "heldout_nu005", "toute analyse post-hoc"]
+ },
+ "commandes": "python3 main_determinism_check.py ; python3 main_train_td.py --encoder td0 --protocol heldout_nu --z-target-mode energy_centered --seed 42 (TD0 d'abord) ; boucle bras x modes x seeds x protocoles ; python3 main_evaluate_td.py",
+ "export": "predictions_test.npz automatique par run (format Step 6, sans ecrasement) ; SHA-256 consignés après les runs (Get-FileHash)"
+}
