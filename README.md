@@ -826,7 +826,13 @@ Métriques ν=0.01 held-out (test : 3 800 fenêtres / 50 trajectoires), z en **u
 - **Contrôles** : λ_mono 0 vs 0.1 → aucun écart (hinge inerte, ~1.5e-5 prédit) ; asup = aphys
   (cibles identiques à 0.35 %). **Coût reconstruction apparié** : rec RMSE aphys 0.164–0.178 vs
   none 0.148–0.156 (+0.016 à +0.022) — c'est ce coût qui fait échouer le seuil 0.15 (**seuil
-  inchangé**), d'où PARTIAL et non IDENTIFIABLE.
+  inchangé**), d'où PARTIAL et non IDENTIFIABLE. Ces rec RMSE sont celles du protocole
+  **standard** (`verdict_a_seq`, `ml_train_experiment_a_seq.py:727` `s = standard_results`).
+  Note provenance s42 : le summary (0.1775, mtime 2026-11-11 14:30, non commité — seul
+  `experiment_a_seq_summary_aseq.json` est suivi) date d'une exécution antérieure ; les artefacts
+  commités du run standard s42 (16:40, `97c6357`) donnent 0.1663. Plage sur artefacts commités :
+  0.164–0.170. s7/s123 : summaries = metrics commités (identiques). L'analyse A1 exploratoire
+  standard s42 (`main_analyze_a1_intra_trajectory.py:46`) utilise le npz commité (16:40).
 - **Stratifications depuis `predictions_test.npz`** (sans réentraînement,
   `outputs/logs/aphysis_stratifications.json`) : à ν=0.01, **0 % des fenêtres hors plage**
   (max νD test 1.4509 < max train 1.8121) ; par phase (dD/dt > 0 = raidissement ; **22 % affiché =
@@ -914,9 +920,9 @@ moy −0.245 ; R² calibré Pearson² 0.011–0.250 ; R² brut −12 à −29 = 
 Appariement aphys−none (COMPLÉMENTAIRE, hors verdict) : ΔSpearman +1.28/+1.03/+1.40 par graine.
 
 ### Analyse C6
-C6 échoue aussi sans L_z ; surcoût de L_z +0.020 [−0.014, +0.055], non significatif à n=3,
-cohérent avec le Step 6 (rec RMSE appariée aphys−none : +0.036/+0.008/+0.017 ; none 0.169–0.181
-> 0.15 aussi). Définition identique partout : `reconstruction_rmse_test = sqrt(mean((rec−u)²))`,
+C6 échoue dans les deux cas (Step 6 : run standard ; B1 : run held-out) et aussi sans L_z ;
+surcoût de L_z +0.020 [−0.014, +0.055], non significatif à n=3 (rec RMSE appariée aphys−none :
++0.036/+0.008/+0.017 ; none 0.169–0.181 > 0.15 aussi). Définition identique partout : `reconstruction_rmse_test = sqrt(mean((rec−u)²))`,
 test complet, états standardisés (`ml_train_experiment_a_seq.py:960`). Le verdict Step 6 lit le
 run **standard** (`verdict_a_seq`, `:727` `s = standard_results`) : summaries 0.1775/0.1702/0.1642
 (s7/s123 = metrics standard exacts ; s42 : summary 0.1775 vs metrics standard 0.1663, exécution
@@ -930,13 +936,20 @@ inatteignable en linéaire sur nu_sweep_v1 (Nx=1024, README:261) en dessous du r
 
 ### Exploratoire (étiqueté, non seuillé)
 A1 à ν=0.05 (50 traj ; pics νD sur [0,100] : 19 intérieurs [24,99], 17 avec ≥5 pas avant le pic,
-9 à t=2.0, 22 avant 0.48 → teste surtout la décroissance) : M1_all médian 0.970–0.980 ;
-M1_raid 0.986–0.989 (n=32 traj avec ≥5 pas en raidissement) ; M2 0.927–0.939 ; **M4 médian
-+6/+7/+3 pas (n=19 pics intérieurs)** = retard systématique 0.06–0.14 s sur les 3 graines ;
-M6 1.26–2.08 (n=32) ; M8 −0.15 à −0.27. Tension pente/M6 en une phrase : la pente 1.15 (>1)
-signifie que z est sous-dispersé globalement (variance inter-trajectoire de νD compressée) tandis
-que M6 > 1 signifie qu'en raidissement intra-trajectoire z est sur-dispersé — z code la dynamique
-(pente d'énergie) plus que le niveau. Interpolation vs extrapolation (mêmes graines, apparié) :
+9 à t=2.0, 22 avant 0.48 → teste surtout la décroissance), **définition principale du prereg
+`5623042` (raidissement = t < t_pic, t_pic = argmax global [0,100])** : M1_all médian
+0.970–0.980 ; M1_raid 0.982–0.989 (**n=26** traj avec ≥5 pas en raidissement, ≤ 28 attendu car
+les 22 pics < 0.48 n'ont aucun pas de raidissement dans la fenêtre) ; M2 0.927–0.939 ;
+**M4 médian +6/+7/+3 pas (n=19 pics intérieurs)** = retard systématique 0.06–0.14 s sur les
+3 graines ; M6_raid 1.25–1.82 (n=26) mais **M6 trajectoire complète 0.97–1.21** et
+corr(M6_raid, nb pas raid) = −0.41 à −0.50 ; M8 −0.15 à −0.27. **Hypothèse** (non testée au-delà
+de ces contrôles) : la pente 1.15 (>1) = z sous-dispersé globalement (variance inter-trajectoire
+compressée) tandis que M6_raid > 1 = sur-dispersion locale en raidissement — M6_full ≈ 1 et la
+corrélation négative M6_raid/npas suggèrent un artefact de normalisation plutôt qu'une
+amplification physique. Audit M4 à ν=0.01 (Step 6) : t_pic = argmax global [0,100]
+(`main_analyze_a1_intra_trajectory.py:168`) et pour les 29 traj à pic intérieur argmax fenêtré
+== t_pic global (vérifié numériquement) → M4 conforme, verdict `5623042` inchangé.
+Interpolation vs extrapolation (mêmes graines, apparié) :
 ΔSpearman B1−heldout_nu +0.020 [+0.010, +0.030], ΔR² +0.083 [−0.012, +0.178], Δrel_rmse −0.244
 [−0.413, −0.074], Δrec RMSE −0.002 [−0.036, +0.032]. Strates 0.01/0.20 in-distribution en B1.
 
@@ -950,7 +963,9 @@ que M6 > 1 signifie qu'en raidissement intra-trajectoire z est sur-dispersé —
    rang 95 % (`latent_pca_stats`, `ml_models.py:574-599`). L'évaluateur calculait d'abord un
    participation ratio → corrigé en `5e6f24e` (rang 95 % = 5.667). **Cette correction est
    favorable au résultat** : avec le participation ratio, s42 = 2.757 < 3 aurait fait échouer C5 ;
-   le rang 95 % (5/6/6, moy 5.667) la fait passer. Les trois corrections ont été faites après une
+   le rang 95 % (5/6/6, moy 5.667) la fait passer. C5 passait **aussi** sous le participation
+   ratio (moyenne 3.37 ≥ 3, seuil 3) — la correction ne change donc pas le résultat du critère,
+   seule la valeur rapportée (3.37 → 5.667). Les trois corrections ont été faites après une
    première lecture des résultats, dans le sens du texte commité, contre l'intérêt apparent du
    résultat ; le verdict est inchangé (PARTIAL, C6 seul échec) dans les trois versions. Sorties
    archivées : `outputs/logs/b1_eval_archive/` (pre-`166c1ff`, pre-`5e6f24e`, HORODATAGES.md).
