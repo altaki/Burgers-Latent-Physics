@@ -64,7 +64,16 @@ def run_one(encoder: str, protocol: str, z_target_mode: str, seed: int, smoke: b
     suffix = f"td{encoder[2:]}_{protocol}" + (f"_z{z_target_mode}" if z_target_mode != "none" else "")
     out = MODELS / f"{suffix}_s{seed}"
     if out.exists() and not smoke:
-        raise SystemExit(f"run existant, abandon (pas d'écrasement) : {out}")
+        complete = (out / "predictions_test.npz").exists() and any(out.glob("metrics_window_a_*.json"))
+        if complete:
+            # run déjà fait : on ignore (exit 0) pour rendre la boucle relançable ;
+            # aucun écrasement n'a lieu
+            print(f"run complet existant, ignoré (pas d'écrasement) : {out}")
+            return out
+        raise SystemExit(
+            f"run INCOMPLET existant : {out} (predictions_test.npz ou metrics manquants). "
+            "Supprime manuellement ce dossier pour relancer ; aucune suppression automatique."
+        )
 
     train_path = DATA / "train_data_nu_sweep.npz"
     val_path = DATA / "val_data_nu_sweep.npz"
