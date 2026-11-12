@@ -78,7 +78,9 @@ def run_metrics_nu005(npz_path: Path):
     y = d["nu_dissipation_t"].astype(float)[m]
     D = d["D"].astype(float)[m] if "D" in d.files else None
     r2 = 1 - np.sum((z - y) ** 2) / np.sum((y - y.mean()) ** 2)
-    slope = float(np.sum((y - y.mean()) * (z - z.mean())) / np.sum((y - y.mean()) ** 2))
+    # calibration_slope = pente de nuD ~ a*z + b (définition Step 6,
+    # physics.fit_affine_calibration(pred=z, target=nuD) : target ≈ a*pred + b)
+    slope = float(np.sum((y - y.mean()) * (z - z.mean())) / np.sum((z - z.mean()) ** 2))
     rel = float(np.sqrt(np.mean((z - y) ** 2)) / y.mean())
     rank = effective_rank(d["h"].astype(float)) if d["h"].size else float("nan")
     out = {
