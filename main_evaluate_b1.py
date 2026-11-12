@@ -61,13 +61,19 @@ def t_ic95(vals):
     return m, m - half, m + half
 
 
-def effective_rank(h):
-    """Participation ratio des valeurs propres de la PCA de h (n, d)."""
+def effective_rank(h, var_threshold=0.95):
+    """Rang effectif à 95 % (définition Step 6, ml_models.latent_pca_stats:574-599) :
+    plus petit k tel que les k premières valeurs propres de la covariance de h
+    expliquent >= var_threshold de la variance totale."""
     X = h - h.mean(axis=0)
     C = (X.T @ X) / max(X.shape[0] - 1, 1)
-    ev = np.linalg.eigvalsh(C)
-    ev = ev[ev > 1e-12]
-    return float((ev.sum() ** 2) / (ev ** 2).sum()) if ev.size else float("nan")
+    ev = np.linalg.eigvalsh(C)[::-1]
+    tot = ev.sum()
+    if tot <= 1e-14:
+        return 0.0
+    cum = np.cumsum(ev) / tot
+    k = int(np.searchsorted(cum, var_threshold) + 1)
+    return float(min(k, ev.size))
 
 
 def run_metrics_nu005(npz_path: Path):
