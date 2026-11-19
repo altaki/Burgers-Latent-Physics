@@ -23,6 +23,8 @@ from pathlib import Path
 
 import numpy as np
 
+import td_protocols as tp  # source de vérité unique des protocoles (correction bug filtre)
+
 REPO = Path(__file__).resolve().parent
 DATA = REPO / "outputs" / "data"
 TOL = 1e-6
@@ -84,7 +86,7 @@ def main() -> int:
             train_path=train_path, val_path=val_path, test_path=test_path,
             output_dir=out,
             window_size=25,
-            heldout_nu_values=(0.01,),
+            heldout_nu_values=tp.PROTOCOLS["heldout_nu"]["train_val_nu"],
             z_target_mode="energy_centered",
             z_weight=1.0,
             monotonicity_weight=0.0,

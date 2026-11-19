@@ -27,6 +27,8 @@ from pathlib import Path
 
 import numpy as np
 
+import td_protocols as tp  # source de vérité unique des protocoles (correction bug filtre)
+
 REPO = Path(__file__).resolve().parent
 DATA = REPO / "outputs" / "data"
 MODELS = REPO / "outputs" / "models" / "latent_dynamics_autoencoder_seq"
@@ -159,6 +161,11 @@ def main() -> int:
     seeds = prereg["seeds"]
     protocoles = {p["name"]: p for p in prereg["protocoles"]}
     nu_eval = {name: float(p["nu_eval_principal"]) for name, p in protocoles.items()}
+    # cohérence module de protocoles unique vs prereg (correction bug filtre)
+    tp.check_against_prereg()
+    if set(tp.PROTOCOLS) != set(protocoles):
+        print("ÉCHEC : protocoles du module != prereg")
+        return 1
     delta_R = float(prereg["decision_rule"]["comparaison_principale"]["delta_R"])
 
     # νD_vrai par trajectoire du test (pour M6) : dissipation_physical (101,)
@@ -206,7 +213,7 @@ def main() -> int:
                "prereg_git_note": "commit 515cf5b", "runs": {}, "comparisons": {}, "c6_prime": {}}
 
     # métriques par run (protocole principal en premier)
-    for proto in ("heldout_nu", "heldout_nu005"):
+    for proto in tp.PROTOCOLS:
         for bras in bras_ids:
             for mode in ("energy_centered", "none"):
                 rows = [runs[(bras, proto, mode, s)] for s in seeds]

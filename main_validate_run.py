@@ -49,10 +49,9 @@ MODELS = REPO / "outputs" / "models" / "latent_dynamics_autoencoder_seq"
 METRICS_EXCLUDED_KEYS = ("traceability", "checkpoint_path", "best_model_path")
 NPZ_EXCLUDED_FIELDS = ("checkpoint_path",)
 
-PROTOCOLS = {
-    "heldout_nu": {"heldout_nu_values": (0.01,), "nu_strat": 0.01},
-    "heldout_nu005": {"heldout_nu_values": (0.01, 0.2), "nu_strat": 0.05},
-}
+import td_protocols as tp  # source de vérité unique des protocoles (correction bug filtre)
+
+PROTOCOLS = tp.PROTOCOLS  # {nom: {"train_val_nu": ..., "nu_strat": ...}}
 W = 25
 
 
@@ -206,6 +205,7 @@ def main() -> int:
         tmp = Path(tempfile.mkdtemp(prefix="td_validate_"))
         new_dir = tmp / ref_dir.name
         cfg = PROTOCOLS[args.protocol]
+        tp.check_against_prereg()
         print(f"relance du run dans {new_dir} (dossier temporaire, aucun écrasement) ...")
         mt.train_and_evaluate_a_seq(
             protocol=args.protocol,
@@ -214,7 +214,7 @@ def main() -> int:
             test_path=DATA / "test_data_nu_sweep.npz",
             output_dir=new_dir,
             window_size=W,
-            heldout_nu_values=cfg["heldout_nu_values"],
+            heldout_nu_values=cfg["train_val_nu"],
             z_target_mode=args.z_target_mode,
             z_weight=1.0 if args.z_target_mode != "none" else 0.0,
             monotonicity_weight=0.0,
@@ -225,6 +225,7 @@ def main() -> int:
             run_tag=f"td{args.encoder[2:]}",
             require_clean_tree=True,
             smoke=False,
+            expected_train_nu=cfg["train_val_nu"],
         )
 
     new_metrics, new_npz = _find_artifacts(new_dir)

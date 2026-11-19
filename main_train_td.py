@@ -44,10 +44,9 @@ REPO = Path(__file__).resolve().parent
 DATA = REPO / "outputs" / "data"
 MODELS = REPO / "outputs" / "models" / "latent_dynamics_autoencoder_seq"
 
-PROTOCOLS = {
-    "heldout_nu": {"heldout_nu_values": (0.01,), "nu_strat": 0.01},
-    "heldout_nu005": {"heldout_nu_values": (0.01, 0.2), "nu_strat": 0.05},
-}
+import td_protocols as tp  # source de vérité unique des protocoles (correction bug filtre)
+
+PROTOCOLS = tp.PROTOCOLS  # {nom: {"train_val_nu": ..., "nu_strat": ...}}
 W = 25
 ENCODERS = ("td0", "td1", "td2", "td3")
 SEEDS_PREREG = (42, 7, 123, 2024, 999)
@@ -61,6 +60,9 @@ def run_one(encoder: str, protocol: str, z_target_mode: str, seed: int, smoke: b
         raise SystemExit(f"--encoder doit être dans {ENCODERS}, reçu {encoder!r}")
     if protocol not in PROTOCOLS:
         raise SystemExit(f"--protocol doit être dans {list(PROTOCOLS)}, reçu {protocol!r}")
+    # Refus de démarrer si le module de protocoles diverge du prereg TD
+    # (correction bug filtre heldout_nu) :
+    tp.check_against_prereg()
     if z_target_mode not in ("energy_centered", "none"):
         raise SystemExit("--z-target-mode doit être energy_centered ou none")
 
@@ -125,7 +127,7 @@ def run_one(encoder: str, protocol: str, z_target_mode: str, seed: int, smoke: b
             train_path=train_path, val_path=val_path, test_path=test_path,
             output_dir=out,
             window_size=W,
-            heldout_nu_values=cfg["heldout_nu_values"],
+            heldout_nu_values=cfg["train_val_nu"],
             z_target_mode=z_target_mode,
             z_weight=1.0 if z_target_mode != "none" else 0.0,
             monotonicity_weight=0.0,
@@ -136,6 +138,9 @@ def run_one(encoder: str, protocol: str, z_target_mode: str, seed: int, smoke: b
             run_tag=f"td{encoder[2:]}",
             require_clean_tree=not smoke,
             smoke=smoke,
+            # garde-fou : ensemble ν effectif du train/val == prereg (hors smoke,
+            # où les données sont tronquées) ; refus avant tout entraînement sinon
+            expected_train_nu=None if smoke else cfg["train_val_nu"],
         )
     finally:
         try:

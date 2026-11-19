@@ -909,6 +909,7 @@ def train_and_evaluate_a_seq(
     num_threads: int = 4,
     require_clean_tree: bool = True,
     smoke: bool = False,
+    expected_train_nu: Optional[Sequence[float]] = None,
 ) -> Dict[str, Any]:
     """Pipeline window-A pour un protocole : datasets -> entraînement (early
     stopping) -> meilleur checkpoint -> prédiction test -> métriques z vs nu*D
@@ -923,7 +924,11 @@ def train_and_evaluate_a_seq(
     temporelles, GAP, canal produit). `run_tag` (ex. "td2") préfixe le suffixe
     de run ; None = nommage historique `w{w}_{protocole}`.
     `require_clean_tree` : refuse le run si le working tree est modifié
-    (règle 0.3, sauf smoke=True)."""
+    (règle 0.3, sauf smoke=True).
+    `expected_train_nu` : si fourni, ensemble ν attendu pour train/val ; le run
+    est REFUSÉ avant tout entraînement si l'ensemble ν effectivement filtré
+    (train_ds.nu_values) diffère (correction bug filtre de protocole). L'ensemble
+    effectif et le standardiseur de cible sont consignés dans `traceability`."""
     if protocol not in ("standard", "heldout_nu", "heldout_nu005"):
         raise ValueError("`protocol` doit être 'standard', 'heldout_nu' ou 'heldout_nu005'.")
 
@@ -961,6 +966,20 @@ def train_and_evaluate_a_seq(
     )
     train_ds = bundle["train"]
     nx = train_ds.nx
+
+    # Garde-fou protocole (correction bug filtre) : ensemble ν effectif du
+    # train/val == expected_train_nu, sinon refus AVANT tout entraînement.
+    train_val_nu_actual = sorted({float(v) for v in np.asarray(train_ds.nu_values)})
+    if expected_train_nu is not None:
+        expected = sorted(float(v) for v in expected_train_nu)
+        if len(train_val_nu_actual) != len(expected) or not all(
+            bool(np.isclose(a, b)) for a, b in zip(train_val_nu_actual, expected)
+        ):
+            raise ValueError(
+                f"filtre nu incoherent : train/val effectif {train_val_nu_actual} "
+                f"!= attendu {expected} (expected_train_nu). Run refuse avant entraînement."
+            )
+    traceability["train_val_nu"] = train_val_nu_actual
     e0_quartile_edges = np.quantile(
         np.asarray(train_ds.energy0, dtype=float), [0.0, 0.25, 0.5, 0.75, 1.0]
     )
@@ -988,6 +1007,7 @@ def train_and_evaluate_a_seq(
         z_std = float(np.std(vals))
         z_target_transform = (z_mean, max(z_std, 1e-8))
         z_target_standardizer = {"mean": z_mean, "std": z_std, "fit_on": "train", "key": z_key}
+    traceability["z_target_standardizer"] = z_target_standardizer
 
     # 2) modèle + entraînement
     if encoder_mode == "td0":
