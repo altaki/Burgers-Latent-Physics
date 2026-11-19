@@ -24,7 +24,7 @@ Commandes exactes (env torch, python3, racine du repo) :
   #               seed in 42 7 123 2024 999, protocole in heldout_nu heldout_nu005
   python3 main_train_td.py --encoder {bras} --protocol {protocole} --z-target-mode {mode} --seed {seed}
 
-Smoke (2 époques, train tronqué à 20 trajectoires, copie temporaire dans le dossier
+Smoke (2 époques, copie temporaire tronquée à 7 trajectoires par strate de ν, dans le dossier
 temp, AUCUNE écriture dans outputs/, working tree non exigé propre) :
   python3 main_train_td.py --encoder td2 --protocol heldout_nu --z-target-mode energy_centered --seed 42 --smoke
 
@@ -84,21 +84,13 @@ def run_one(encoder: str, protocol: str, z_target_mode: str, seed: int, smoke: b
     val_path = DATA / "val_data_nu_sweep.npz"
     test_path = DATA / "test_data_nu_sweep.npz"
     if smoke:
-        # copie tronquée (20 premières trajectoires) dans le dossier temp :
-        # les npz de data restent en lecture seule
+        # copie tronquée STRATIFIÉE (7 trajectoires par strate de ν) dans le
+        # dossier temp : les npz de data restent en lecture seule. Depuis la
+        # correction du filtre heldout_nu, une troncature [:20] (100 % ν=0.01)
+        # viderait le train filtré (num_samples=0).
         tmp = Path(tempfile.mkdtemp(prefix="td_smoke_"))
         for name, src in (("train", train_path), ("val", val_path), ("test", test_path)):
-            d = dict(np.load(src, allow_pickle=True))
-            for k in ("states", "energy", "dissipation", "dissipation_physical", "u0"):
-                if k in d:
-                    d[k] = d[k][:20]
-            for k in ("nu_values", "ic_type_ids", "energy0", "mass0", "trajectory_seeds",
-                      "initial_max_abs_u", "initial_advective_cfl", "initial_diffusive_number",
-                      "energy_monotone_fraction", "energy_mean_positive_violation",
-                      "target_l2_norm", "initial_cell_peclet"):
-                if k in d:
-                    d[k] = d[k][:20]
-            np.savez(tmp / f"{name}_data_nu_sweep.npz", **d)
+            tp.truncate_npz_stratified(src, tmp / f"{name}_data_nu_sweep.npz", per_nu=7)
         train_path = tmp / "train_data_nu_sweep.npz"
         val_path = tmp / "val_data_nu_sweep.npz"
         test_path = tmp / "test_data_nu_sweep.npz"

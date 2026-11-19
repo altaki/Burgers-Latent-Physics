@@ -1,7 +1,7 @@
 """Test automatique de déterminisme (prereg TD 515cf5b §9, exigence 0.2).
 
 Lance DEUX fois le même mini-run in-process (même graine 42, 2 époques, données
-tronquées à 20 trajectoires copiées dans le dossier temp, encodeur td0, protocole
+tronquées à 7 trajectoires par strate de ν (stratifié) copiées dans le dossier temp, encodeur td0, protocole
 heldout_nu, z_target_mode=energy_centered) et compare :
   - toutes les valeurs numériques du metrics JSON (hors traceability : hash, chemins,
     timestamps) ;
@@ -31,22 +31,15 @@ TOL = 1e-6
 
 
 def _truncated_copy(tmp: Path) -> tuple:
+    # Troncature STRATIFIÉE (7 trajectoires par strate de ν) : depuis la correction
+    # du filtre heldout_nu, une troncature [:20] (100 % ν=0.01) viderait le train
+    # filtré (num_samples=0).
     paths = {}
     for name, src in (("train", DATA / "train_data_nu_sweep.npz"),
                       ("val", DATA / "val_data_nu_sweep.npz"),
                       ("test", DATA / "test_data_nu_sweep.npz")):
-        d = dict(np.load(src, allow_pickle=True))
-        for k in ("states", "energy", "dissipation", "dissipation_physical", "u0"):
-            if k in d:
-                d[k] = d[k][:20]
-        for k in ("nu_values", "ic_type_ids", "energy0", "mass0", "trajectory_seeds",
-                  "initial_max_abs_u", "initial_advective_cfl", "initial_diffusive_number",
-                  "energy_monotone_fraction", "energy_mean_positive_violation",
-                  "target_l2_norm", "initial_cell_peclet"):
-            if k in d:
-                d[k] = d[k][:20]
         p = tmp / f"{name}_data_nu_sweep.npz"
-        np.savez(p, **d)
+        tp.truncate_npz_stratified(src, p, per_nu=7)
         paths[name] = p
     return paths["train"], paths["val"], paths["test"]
 

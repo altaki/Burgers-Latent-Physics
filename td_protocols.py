@@ -79,6 +79,29 @@ def check_filter_on_data() -> None:
             raise SystemExit(f"filtrage incohérent pour {name} : effectif={eff} attendu={exp}")
 
 
+def truncate_npz_stratified(src, dst, per_nu: int = 7) -> None:
+    """Copie tronquée d'un npz de split pour les smoke tests : les `per_nu`
+    premières trajectoires de CHAQUE strate de ν (21 trajectoires au total).
+
+    Nécessaire depuis la correction du filtre heldout_nu : les npz sont ordonnés
+    par blocs de ν (train : 0–199 = 0.01, 200–399 = 0.05, 400–599 = 0.2), donc une
+    troncature `[:20]` ne contient que ν=0.01 et viderait le train/val filtré
+    des protocoles heldout (DataLoader num_samples=0). `src` est lu en lecture
+    seule ; seuls les tableaux dont la première dimension est n_traj sont
+    tronqués."""
+    d = dict(np.load(src, allow_pickle=True))
+    nu = d["nu_values"].astype(float)
+    idx = []
+    for v in np.unique(nu):
+        idx.extend(np.where(np.isclose(nu, v))[0][:per_nu])
+    idx = np.asarray(sorted(idx), dtype=int)
+    for k in list(d.keys()):
+        a = d[k]
+        if isinstance(a, np.ndarray) and a.ndim >= 1 and a.shape[0] == nu.shape[0]:
+            d[k] = a[idx]
+    np.savez(dst, **d)
+
+
 if __name__ == "__main__":
     if "--check" in sys.argv:
         check_against_prereg()
