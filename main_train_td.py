@@ -34,6 +34,9 @@ temp, AUCUNE écriture dans outputs/, working tree non exigé propre) :
 from __future__ import annotations
 
 import argparse
+import datetime
+import os
+import sys
 import tempfile
 from pathlib import Path
 
@@ -100,23 +103,45 @@ def run_one(encoder: str, protocol: str, z_target_mode: str, seed: int, smoke: b
         out = Path(tempfile.mkdtemp(prefix="td_smoke_out_")) / out.name
 
     cfg = PROTOCOLS[protocol]
-    mt.train_and_evaluate_a_seq(
-        protocol=protocol,
-        train_path=train_path, val_path=val_path, test_path=test_path,
-        output_dir=out,
-        window_size=W,
-        heldout_nu_values=cfg["heldout_nu_values"],
-        z_target_mode=z_target_mode,
-        z_weight=1.0 if z_target_mode != "none" else 0.0,
-        monotonicity_weight=0.0,
-        nu_strat=cfg["nu_strat"],
-        num_epochs=2 if smoke else 200,
-        seed=seed,
-        encoder_mode=encoder,
-        run_tag=f"td{encoder[2:]}",
-        require_clean_tree=not smoke,
-        smoke=smoke,
-    )
+    # Verrou : fichier .lock créé au démarrage du run, refusé s'il existe.
+    # Aucun effet sur l'entraînement (créé après le garde-fou, supprimé en finally).
+    # Si le processus est tué brutalement (kill -9, extinction), le verrou reste :
+    # le relancer exige alors de le supprimer manuellement.
+    lock_path = out.parent / (out.name + ".lock")
+    try:
+        fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        raise SystemExit(
+            f"verrou existant : {lock_path} — un run est peut-être en cours, ou verrou "
+            "périmé après un arrêt brutal. Vérifie les processus python, puis supprime "
+            "manuellement le verrou si aucun run n'est actif."
+        )
+    with os.fdopen(fd, "w") as fh:
+        fh.write(f"pid={os.getpid()} start={datetime.datetime.now().isoformat(timespec='seconds')}\n")
+        fh.write("cmd=" + " ".join(sys.argv) + "\n")
+    try:
+        mt.train_and_evaluate_a_seq(
+            protocol=protocol,
+            train_path=train_path, val_path=val_path, test_path=test_path,
+            output_dir=out,
+            window_size=W,
+            heldout_nu_values=cfg["heldout_nu_values"],
+            z_target_mode=z_target_mode,
+            z_weight=1.0 if z_target_mode != "none" else 0.0,
+            monotonicity_weight=0.0,
+            nu_strat=cfg["nu_strat"],
+            num_epochs=2 if smoke else 200,
+            seed=seed,
+            encoder_mode=encoder,
+            run_tag=f"td{encoder[2:]}",
+            require_clean_tree=not smoke,
+            smoke=smoke,
+        )
+    finally:
+        try:
+            os.unlink(lock_path)
+        except OSError:
+            pass
     return out
 
 
