@@ -969,7 +969,10 @@ def train_and_evaluate_a_seq(
 
     # Garde-fou protocole (correction bug filtre) : ensemble ν effectif du
     # train/val == expected_train_nu, sinon refus AVANT tout entraînement.
-    train_val_nu_actual = sorted({float(v) for v in np.asarray(train_ds.nu_values)})
+    # L'ensemble effectif est lu sur index_map (paires réellement chargées,
+    # déjà filtrées par nu_mask) — PAS sur train_ds.nu_values (tableau brut
+    # non filtré des 600 trajectoires).
+    train_val_nu_actual = sorted({float(train_ds.nu_values[i]) for (i, _t) in train_ds.index_map})
     if expected_train_nu is not None:
         expected = sorted(float(v) for v in expected_train_nu)
         if len(train_val_nu_actual) != len(expected) or not all(
