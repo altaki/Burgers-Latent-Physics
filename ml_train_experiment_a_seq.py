@@ -600,6 +600,7 @@ def _subset_metrics(pred: np.ndarray, targ: np.ndarray) -> Dict[str, Any]:
         "spearman": spearman,
         "pearson": pearson,
         "r2": r2,
+        "r2_identity": r2,  # alias explicite : r2 (lignes 594-595) est une R2 identite 1-ss_res/ss_tot, pas affine (README Step 9)
         "rel_rmse": rel_rmse,
         "calibration_slope": slope,
     }

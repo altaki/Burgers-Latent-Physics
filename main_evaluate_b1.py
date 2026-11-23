@@ -92,6 +92,7 @@ def run_metrics_nu005(npz_path: Path):
     out = {
         "spearman_z_nuD": spearman(z, y),
         "r2_affine_nuD_z": float(r2),
+        "r2_identity_nuD_z": float(r2),  # doublon explicite : la formule ci-dessus est une R2 identite 1-ss_res/ss_tot (README Step 9), le label historique est conserve pour retrocompatibilite
         "calibration_slope": slope,
         "rel_rmse_z": rel,
         "effective_rank_h": rank,

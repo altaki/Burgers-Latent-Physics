@@ -92,6 +92,7 @@ def run_metrics(npz_path: Path, nu_eval: float, nuD_traj: dict) -> dict:
     out = {
         "spearman_z_nuD": spearman(z, y),
         "r2_affine_nuD_z": float(r2),
+        "r2_identity_nuD_z": float(r2),  # doublon explicite : la formule ligne 89 est une R2 identite 1-ss_res/ss_tot (README Step 9), le label historique est conserve pour retrocompatibilite
         "calibration_slope": slope,
         "rel_rmse_z": rel,
         "ecart_au_plafond": float(r2 - PLAFOND_R2),
