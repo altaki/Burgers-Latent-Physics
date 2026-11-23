@@ -1035,3 +1035,177 @@ train filtré 1.4287638073 utilisée vs train complet 1.4287588915 annoncé READ
   (zero_mean for all families), so the mass label is gone.**
 - Does the alignment persist at larger T? (nu_sweep_v1 covers ν ∈ {0.01, 0.05, 0.20};
   larger T not covered)
+
+
+## Step 8 — TD (encodeur) : bug de filtre `heldout_nu`, correction et archivage
+
+- **Bug** : `main_train_td.py:48` passait `heldout_nu_values=(0.01,)` au lieu de
+  `(0.05, 0.2)` (prereg `td_encoder_prereg.md:40`) → 10 runs TD0 heldout_nu entraînés
+  sur ν=0.01 seul (preuve : `z_target_standardizer` = 0.168410/0.234691 = fit ν=0.01,
+  reproduit à 8 décimales). Corrigé dans `36ba701` (module `td_protocols.py`, source
+  unique ; garde-fou `expected_train_nu` ; `python3 td_protocols.py --check`), archivage
+  `d844a7a` (`td0_indist_nu001_*`, contrôle in-distribution, hors verdict), runs corrigés
+  relancés sous les noms d'origine (`4f3b713`, artefacts `1a93648`).
+- **Aucune affirmation d'effet du code déterministe sur la performance** : différences
+  par graine (non appariées au sens strict — le générateur du DataLoader a changé, donc
+  même graine ≠ même trajectoire), R² identité des deux côtés, depuis les
+  `predictions_test.npz` : TD0−Step6 (ν=0.01) moy +0.0292, IC95 t(ddl=2) [−0.0406, +0.0989] ;
+  B1−TD0 (ν=0.05) moy +0.0078, IC95 [−0.0209, +0.0365]. Toutes les IC incluent 0 →
+  aucun effet démontré, effet faible non exclu ; runs historiques et runs TD ne sont
+  jamais comparés entre eux. La limite « résultats historiques non reproductibles
+  bit à bit » reste.
+
+## Step 9 — Résultats TD (encodeur) — prereg `515cf5b` + amendment `182c8fc`, artefacts `91199bc`
+
+### Protocole
+- 80 runs = 4 bras (td0/td1/td2/td3) × 2 protocoles (heldout_nu, heldout_nu005) × 2 modes
+  (energy_centered, none) × 5 graines {42, 7, 123, 2024, 999}. Les 60 runs TD1–TD3 ont
+  tourné sur git=`182c8fc8`, working tree propre (dirty=False), torch 2.12.0+cpu /
+  numpy 2.4.1 / 4 threads ; SHA-256 des 300 fichiers dans
+  `outputs/logs/td_corrected/td_artifacts_sha256.txt` (commit `91199bc`). Évaluateur :
+  `main_evaluate_td.py` → `outputs/logs/td_encoder_results.json`.
+- R² d'évaluation = identité `1−Σ(z−y)²/Σ(y−ȳ)²` à ν held-out (définition fixée par
+  l'amendement §0 ; voir « Inventaire des définitions de R² » ci-dessous).
+
+### Verdicts (règle machine du prereg §6, rapportés tels quels)
+| règle | mean(d) | IC unilatéral 95 % (t ddl=4) | verdict |
+|---|---|---|---|
+| D1 td2−td0 (CONFIRMATOIRE, principale) | −0.0034 | [−0.0606, +0.0537] | **INDÉTERMINÉ** |
+| D2 td1−td0 (CONFIRMATOIRE) | +0.0310 | [+0.0034, +0.0585] | **INDÉTERMINÉ** |
+| D3 td3−td2 (EXPLORATOIRE, injection) | +0.1060 | [+0.0433, +0.1687] | REPRÉSENTATIONNEL |
+
+- **D1** : compatible avec un effet nul (mean −0.003), n'exclut pas jusqu'à +0.054 (borne
+  sup unil. +0.0537) ; même sous effet nul, le verdict NON-REPR n'était obtenu qu'avec une
+  probabilité ≈ 0.46 ; P(REPR | Δ=δ_R) ≈ 0.38 (post-hoc, sd observé 0.0599, diagnostic de
+  conception).
+- **D3** : mesure l'injection sur la branche z **plus** un effet indirect sur la
+  reconstruction (rec td3 = 0.62 < rec td2 = 0.75) ; EXPLORATOIRE, étiqueté INJECTION.
+
+C6' (29c7c3e, heldout_nu) : C6'a ÉCHEC td0 (1.273), td1 (1.157), td2 (1.139) ; td3 « OK »
+(0.986) sans objet car rec collapsé. C6'b ÉCHEC pour les 4 bras (rec_z > 0.188).
+nu005 : C6'a OK pour td1/td2/td3 ; C6'b OK seulement pour td1 (0.1830 ≤ 0.188).
+
+### Résultats par bras (mode z, R² identité, moy ± sd, n=5)
+ν=0.01 : R² = td0 0.8747±0.0201 · td1 0.9057±0.0241 · td2 0.8713±0.0614 · td3 0.9773±0.0053 ;
+Spearman 0.9645/0.9839/0.9840/0.9872 ; pente 1.009/0.929/0.844/1.017 ; M6 0.743/0.911/
+1.028/0.933 ; rec 0.197/0.190/0.746/0.623.
+ν=0.05 : R² = 0.9238/0.9476/0.9765/0.9883 ; pente 1.164/1.123/1.050/1.027 ; rec 0.190/0.183/0.574/0.556.
+
+### Bilan des prédictions pré-enregistrées (prereg §8, toutes)
+- TD0 : R² ∈ [0.78, 0.90] → 0.8747±0.0201 : **CONFIRMÉ**. Spearman ∈ [0.95, 0.98] → 0.9645 :
+  **CONFIRMÉ**. Falsification (TD0 hors plages → STOP) : **non déclenchée**.
+- TD2 si REPR : R² ∈ [0.90, 0.9995] ; si NON-REPR : ∈ [0.78, 0.90] → 0.8713±0.0614 ∈ plage
+  NON-REPR mais D1 = INDÉTERMINÉ (borne sup +0.0537 > δ_R). Falsification croisée
+  (R²(TD2) < R²(TD0)−0.05) : −0.0034 > −0.05, **non déclenchée**.
+- TD3 (injection, EXPLORATOIRE) : R² ≥ 0.99 attendu → 0.9773±0.0053 : **FALSIFIÉ de 0.013**.
+- M6(TD0) ≈ 0.81 attendu (EXPLORATOIRE) → 0.7427 mesuré.
+- TD1/D2 : **aucune prédiction chiffrée** dans §8 — seules les règles de décision §6
+  (D2 = TD1−TD0 CONFIRMATOIRE, δ_R=0.05 ; D1 = TD2−TD0) ; bilan : D2 INDÉTERMINÉ.
+
+### Écart au plafond analytique
+Écart au plafond (0.9995) : TD0 0.1248 · TD1 0.0938 · TD2 0.1282 · TD3 0.0222. Les biais
+génériques testés (canaux de différences temporelles, pooling global) ne ferment pas
+l'écart ; l'injection de ∫u·∂ₜu (∝ dE/dt = −νD) le ramène à 0.022, presque entièrement.
+Aucune comparaison confirmatoire n'atteint δ_R = 0.05 : TD1 donne un gain cohérent sur
+5/5 graines (+0.0310, borne inf. unil. +0.0034), inférieur au seuil pré-enregistré →
+descriptif, hors verdict.
+
+### Inventaire des définitions de R² (complété après relecture du code)
+| R² publié | définition réelle | fichier:ligne |
+|---|---|---|
+| Évaluation Step 5 / Step 6 (0.844) / plafond analytique (0.9995) | **identité** `1−ss_res/ss_tot` | `ml_train_experiment_a_seq.py:593-595` (`r2_holdout` ligne 799 ; `main_analytic_nuD_baseline.py:157` → `mt.evaluate_predictions`) |
+| B1 (0.927, nu005) | **identité** (label `r2_affine_nuD_z`) | `main_evaluate_b1.py:86` (label ligne 94 ; aussi 196, 206) |
+| C2 supervisé (0.69, experiment_c) | **identité** `1−mse/var_target` | `physics_candidates.py:97`, via `ml_train_experiment_c.py:421` (`compute_target_metrics`) |
+| TD (ce step) | **identité** (label `r2_affine_nuD_z`) | `main_evaluate_td.py:88` (label ligne 89) |
+| Analyses de latents A-Physics (r²aff 0.890/0.841/0.889) | **affine = Pearson²** (fit univarié, métriques sur valeurs calibrées) | `physics_candidates.py:106-119` (`fit_affine_calibration`), `main_analyze_window_a_latents.py:80` |
+| Sondes / classements par dimension (affine R², README:221) | **affine = Pearson²** | `physics_candidates.py:336+` (`rank_candidates_against_latent`, `affine_r2`), `main_identify_latent_variable.py:368` |
+| A1 recalibration affine par trajectoire | **affine = Pearson²** | `main_analyze_a1_intra_trajectory.py:381, 546` |
+
+Endroits du README où deux définitions coexistent : ligne 569 (seuil Step 6 libellé
+« affine R² ≥ 0.5 (C2: 0.69) » mais calculé en identité des deux côtés — label erroné),
+ligne 632 (« calibrated R² = Pearson² 0.09 » vs R² brut identité), ligne 928 (B1 :
+calibré Pearson² 0.011–0.250 vs brut −12 à −29), et la comparaison Step 9 : 0.844
+(identité, évaluation) vs r²aff ≈ 0.89 (Pearson², analyse de latents) — deux définitions,
+non comparables directement. Le label de clé `r2_affine_nuD_z` est erroné (la valeur est
+identité) ; une clé `r2_identity_nuD_z` en doublon a été ajoutée dans le code
+d'évaluation (commit séparé), l'ancienne clé est conservée.
+
+### Limites
+- Puissances **post-hoc, sd observé, diagnostic de conception** (aucune puissance
+  déclarée a priori n'est modifiée) : verdict REPR complet (mean ≥ δ_R ET borne inf. > 0),
+  Monte-Carlo exact (n=5, t_c=2.1318, sd échantillon) : à Δ=δ_R=0.05, P(REPR) = 0.50 (D2,
+  sd 0.0289) et 0.38 (D1, sd 0.0599) — **≤ 0.5, tend vers 0.5 quand n augmente** ; MDE80 % =
+  0.062 (D2), 0.082 (D1, contrainte active = borne inf. car t_c·se = 0.057 > δ_R).
+  P(NON-REPR|Δ=0) = 0.93 (D2), 0.46 (D1) — valeur exacte (sd échantillon) ; par symétrie
+  P(NON-REPR|Δ=0) = P(borne inf. > 0 | Δ=δ_R), ce qui explique que 0.46 apparaissait déjà
+  en v1 comme « puissance à δ=0.05 » (coïncidence de symétrie, pas d'inversion ; la v1
+  0.40 utilisait sd fixe, approximation).
+- Les valeurs de l'amendement §3 (« MDE 0.039 / puissance 0.93–0.94 à δ=0.05 ») correspondent
+  à la seule condition borne inf. > 0 — voir « Écarts au pré-enregistrement ».
+- D1 est confondu : le pooling global sur tout l'encodeur rend la reconstruction impossible
+  (rec 0.55–0.75, y compris en mode none ; test_losses : rec = 0.45/0.49 de la loss totale
+  pour td2 vs 0.037/0.110 pour td0), change l'équilibre des pertes et l'arrêt précoce
+  (best_val 0.206 vs 0.040, époque 36 vs 21) → explique probablement la variance de TD2
+  (sd R² = 0.061). Défaut de conception du prereg : le pooling aurait dû être limité à la
+  branche z.
+- La strate test ν=0.01 a été consultée de nombreuses fois depuis le Step 5 (hors
+  anti-sélection prereg §4 : aucune itération sur le test, mais lectures multiples).
+- Run `td0_heldout_nu005_zenergy_centered_s42` : durée murale anormale (964 min vs ~17 min) ;
+  résultats validés bit à bit (`main_validate_run.py`, écart 0.0).
+- Exploratoire, sans verdict : hétérogénéité du pooling selon le protocole — TD2−TD0
+  apparié par graine : ν=0.01 mean −0.0034 IC95 [−0.0778, +0.0710] ; ν=0.05 mean +0.0527
+  IC95 [+0.0386, +0.0668], 5/5 graines positives.
+
+### Écarts au pré-enregistrement
+- Bug de filtre `heldout_nu` inversé (`main_train_td.py:48`), prouvé à 8 décimales,
+  corrigé (`36ba701`, `0ff901a`, `4f3b713`), 10 runs archivés (`d844a7a`), runs corrigés
+  relancés (`1a93648`).
+- Amendement 1 rédigé **après lecture** des runs erronés (déclenchement §8) — déclaré.
+- Définition du R² d'évaluation fixée par l'amendement §0 (identité) ; label de clé erroné
+  documenté ci-dessus ; aucune valeur rétrospective recalculée.
+- **Puissance mal déclarée** dans l'amendement §3 : « MDE 0.039 / puissance 0.93–0.94 à
+  δ=0.05 » = condition borne inf. > 0 seule. Verdict REPR complet : P(REPR|Δ=δ_R) ≤ 0.5
+  (0.50 D2 / 0.38 D1), MDE80 % = 0.062 (D2) / 0.082 (D1). **Aucun verdict modifié.**
+- Run 964 min (voir Limites).
+
+### Open questions
+- Pourquoi TD3 plafonne à 0.977 et non ≥ 0.99 (prereg falsifié de 0.013) ?
+- Le gain TD1 (+0.031, 5/5 graines) confirmé à n plus grand (MDE80 0.062 à n=5) ?
+- Un pooling restreint à la branche z (TD2') lève-t-il la confusion rec/z de TD2 ?
+
+---
+
+## Bilan global du projet (5 points)
+
+1. **Données** : nu_sweep_v1 (L=2π, Nx=1024, RK4, T=2, ν∈{0.01,0.05,0.20}, 600/150/150)
+   avec identité exacte dE/dt = −νD ; plafond analytique 2 snapshots R² 0.9995 à ν=0.01.
+2. **Découverte vs préservation** : sans supervision z ne s'aligne pas sur νD (window-A) ;
+   une observable νD injectée est préservée (Step 6 A1, B1) — préservation, pas découverte.
+3. **TD** : aucun biais générique ne ferme l'écart au plafond (D1/D2 INDÉTERMINÉS ; TD1
+   +0.031 < δ_R, 5/5 graines ; puissances post-hoc à Δ=δ_R ≤ 0.5, MDE80 0.06–0.08 à n=5) ;
+   l'injection de ∫u·∂ₜu le ferme presque (TD3 0.977, résidu 0.022) ; le pooling global
+   détruit la reconstruction (défaut de conception du prereg).
+4. **Méthodologie** : bug de filtre prouvé à 8 décimales et corrigé, runs erronés archivés ;
+   80 runs tracés (git, dirty, versions, horaires), déterminisme bit à bit validé
+   inter-session ; aucun effet du code déterministe démontré (IC à 0) ; inventaire des
+   définitions de R² (évaluation = identité ; analyses latentes = Pearson²).
+5. **C6'** : la perte z a un coût en reconstruction — C6'a/C6'b échouent pour TD0/TD1 en
+   heldout_nu (rec_z > rec_none apparié, rec_z > plancher PCA k=8 = 0.188) ; seul TD1 passe
+   C6'b en nu005 (0.1830).
+
+## Proposition TD2' révisée (NON pré-enregistrée, NON implémentée)
+
+- **Architecture** : tronc partagé = encodeur TD1 (fenêtre + canaux Δ_k u, k∈{1,2,4,8,16}) ;
+  deux têtes — flatten spatial → décodeur/prédiction latente ; global average pooling →
+  **seule** la tête z (z reste une lecture du tronc partagé, pas un encodeur séparé type C2).
+- **Comparaisons** : D1'' = TD2'−TD1 isole le pooling (branche z seule) ; D2'' = TD2'−TD0 =
+  effet total. Règle identique (R² identité ν=0.01, appariement strict par graine, IC
+  unilatéral 95 % t ddl=4, δ_R=0.05, 3 verdicts).
+- **Statut** : conception déclarée **post-lecture** → EXPLORATOIRE si lancée sans nouveau
+  pré-enregistrement ; prereg commité AVANT les runs pour du CONFIRMATOIRE. Note : la règle
+  « mean ≥ δ_R » plafonne P(REPR|Δ=δ_R) à 0.5 quel que soit n — à remplacer a priori si
+  pré-enregistré.
+- **Puissance (post-hoc, sd supposé 0.029, diagnostic de conception)** : MDE80 % ≈ 0.062 à
+  n=5 ; ≈ 0.058 à n=10 (t(0.95,9)=1.8331, t(0.80,9)=0.8834, se=0.00917).
+- **Budget** : n=5 → 20 runs ≈ 9–10 h CPU ; n=10 → 40 runs ≈ 18–20 h. Ordre : heldout_nu
+  d'abord ; TD0/TD1 servent de référence (aucun rerun).
