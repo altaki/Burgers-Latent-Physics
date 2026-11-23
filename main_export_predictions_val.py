@@ -14,7 +14,8 @@ Sécurité :
 
 Usage (env torch requis, Windows/PowerShell) :
   python3 main_export_predictions_val.py --run-dir outputs/models/latent_dynamics_autoencoder_seq/td0_heldout_nu005_zenergy_centered_s42
-  python3 main_export_predictions_val.py --all-td
+  python3 main_export_predictions_val.py --all-td        # liste authoritative = prereg JSON (60 runs, td2 EXCLU)
+  python3 main_export_predictions_val.py --all-td --dry-run   # sans torch, aucune écriture : compte et vérifie
 """
 from __future__ import annotations
 
@@ -38,6 +39,25 @@ HELDOUT_NU005 = (0.01, 0.2)
 
 TD_RE = re.compile(r"^(td[0-3])_(heldout_nu005|heldout_nu)(?:_z(\w+))?_s(\d+)$")
 WINDOW_SIZE = 25  # prereg td_encoder_prereg.md §3
+PREREG_JSON = REPO / "manuscript" / "prereg_nu002_strate_test.json"
+EXPECTED_N_ALL_TD = 60  # 3 bras (td0/td1/td3, td2 exclu) x 2 protocoles x 2 modes x 5 graines
+
+
+def prereg_td_runs() -> list[str]:
+    """Liste authoritative des runs TD à exporter : conditions_evaluees_attendues.runs du prereg JSON.
+
+    td2 est EXCLU du prereg (comparaison D3 non calculable sans TD2) : ne jamais se fier
+    à une regex seule sur les noms de répertoires.
+    """
+    if not PREREG_JSON.exists():
+        raise FileNotFoundError(f"prereg JSON absent : {PREREG_JSON} (requis pour --all-td)")
+    prereg = json.loads(PREREG_JSON.read_text(encoding="utf-8"))
+    runs = sorted(prereg["conditions_evaluees_attendues"]["runs"])
+    if len(runs) != EXPECTED_N_ALL_TD:
+        raise ValueError(f"prereg JSON inattendu : {len(runs)} runs (attendu {EXPECTED_N_ALL_TD})")
+    if any(r.startswith("td2_") for r in runs):
+        raise ValueError("prereg JSON inattendu : contient des runs td2_")
+    return runs
 
 
 def sha256_file(path: Path) -> str:
@@ -114,17 +134,46 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--run-dir", type=Path, action="append", default=[],
                     help="répertoire de run TD (répétable)")
-    ap.add_argument("--all-td", action="store_true", help="tous les runs td[0-3]_* de MODELS_ROOT")
+    ap.add_argument("--all-td", action="store_true",
+                    help=f"les {EXPECTED_N_ALL_TD} runs de la liste authoritative du prereg JSON (td2 exclu)")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="liste les runs retenus, compte par bras/protocole/mode, vérifie n={EXPECTED_N_ALL_TD} et aucun td2 ; aucune import torch, aucune écriture")
     ap.add_argument("--out-dir", type=Path, default=REPO / "outputs" / "predictions_val")
     ap.add_argument("--manifest", type=Path, default=REPO / "outputs" / "logs" / "predictions_val_manifest.json")
     ap.add_argument("--device", default="cpu")
     args = ap.parse_args()
 
-    run_dirs = list(args.run_dir)
+    run_dirs = [p.resolve() for p in args.run_dir]
     if args.all_td:
-        run_dirs += sorted(p for p in MODELS_ROOT.iterdir() if p.is_dir() and TD_RE.match(p.name))
+        names = prereg_td_runs()
+        missing = [n for n in names if not (MODELS_ROOT / n).is_dir()]
+        if missing:
+            print(f"[ABORT] runs du prereg absents de {MODELS_ROOT} : {missing}")
+            return 1
+        run_dirs += [MODELS_ROOT / n for n in names]
     if not run_dirs:
         ap.error("préciser --run-dir ... et/ou --all-td")
+
+    if args.dry_run:
+        from collections import Counter
+        bras = Counter(); proto = Counter(); mode = Counter()
+        for rd in run_dirs:
+            m = TD_RE.match(rd.name)
+            if m is None:
+                print(f"[dry-run][ABORT] nom non reconnu : {rd.name!r}")
+                return 1
+            bras[m.group(1)] += 1
+            proto[m.group(2)] += 1
+            mode[m.group(3) or "none"] += 1
+        n_td2 = sum(1 for rd in run_dirs if rd.name.startswith("td2_"))
+        ok = len(run_dirs) == EXPECTED_N_ALL_TD and n_td2 == 0
+        print(f"[dry-run] {len(run_dirs)} runs retenus (attendu {EXPECTED_N_ALL_TD}) ; runs td2 : {n_td2}")
+        print(f"[dry-run] par bras : {dict(sorted(bras.items()))}")
+        print(f"[dry-run] par protocole : {dict(sorted(proto.items()))}")
+        print(f"[dry-run] par mode z : {dict(sorted(mode.items()))}")
+        print(f"[dry-run] aucune écriture effectuée (pas d'import torch, pas de manifeste) ; OK={ok}")
+        return 0 if ok else 1
+
     if args.manifest.exists():
         print(f"[ABORT] manifeste existe déjà : {args.manifest} (aucune écrasement)")
         return 1
