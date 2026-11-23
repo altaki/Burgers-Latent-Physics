@@ -1235,14 +1235,32 @@ d'évaluation (commit séparé), l'ancienne clé est conservée.
 - **Puissance mal déclarée** dans l'amendement §3 : « MDE 0.039 / puissance 0.93–0.94 à
   δ=0.05 » = condition borne inf. > 0 seule. Verdict REPR complet : P(REPR|Δ=δ_R) ≤ 0.5
   (0.50 D2 / 0.38 D1), MDE80 % = 0.062 (D2) / 0.082 (D1). **Aucun verdict modifié.**
-- **Sensibilité des verdicts D1/D3 à la définition du R²** (recalcul depuis les
-  `predictions_test.npz`, Pearson² in-sample par graine @ν=0.01, t unil. ddl=4) :
-  D1 td2−td0 = **+0.0503**, ICunil95 [+0.0366, +0.0641] → serait **REPRÉSENTATIONNEL** ;
-  D2 = +0.0443 → INDÉTERMINÉ (inchangé) ; D3 = **+0.0447 < δ_R** → INDÉTERMINÉ (le verdict
-  REPRÉSENTATIONNEL disparaîtrait). Cause : Pearson² retire la mauvaise calibration de
-  td2 (pente 0.844 ; sd R² identité 0.061 → 0.022 sous Pearson²). Les verdicts rapportés
-  suivent la définition **fixée par l'amendement §0 (identité), déclarée avant tout run
-  TD1–TD3** ; sensibilité déclarée ici, **aucun verdict modifié**.
+- **Métrique primaire changée par l'amendement `182c8fc` (après lecture de TD0 seul,
+  avant TD1–TD3)** : le prereg `515cf5b` dit « R² affine νD~z » (md:68) et
+  `metric='r2_affine_nuD_z'` pour D1/D2/D3 (json) ; le code calculait une R² identité
+  partout (`ml_train_experiment_a_seq.py:593-595`, `main_evaluate_td.py:88`,
+  `main_evaluate_b1.py:86`). L'amendement §0 a fixé la **R² identité** pour tous les
+  verdicts. **Selon le texte original (R² affine), D1 serait REPR de justesse.**
+  Sensibilité recalculée depuis les `predictions_test.npz` (appariement strict par
+  graine, IC unil. 95 % t ddl=4, δ_R=0.05) :
+  | variante | D1 td2−td0 | D2 td1−td0 | D3 td3−td2 |
+  |---|---|---|---|
+  | R² identité (publiée ; définition amendée `182c8fc`) | −0.0034 [−0.0606,+0.0537] INDÉTERMINÉ | +0.0310 [+0.0034,+0.0585] INDÉTERMINÉ | +0.1060 [+0.0433,+0.1687] REPRÉSENTATIONNEL |
+  | Pearson² in-sample (réajustée sur les labels de la strate évaluée, optimiste) | +0.0503 [+0.0366,+0.0641] REPRÉSENTATIONNEL de justesse (marge +0.0003 sur δ_R ; 5/5 graines > 0) | +0.0443 [+0.0282,+0.0604] INDÉTERMINÉ | +0.0447 (< δ_R) INDÉTERMINÉ |
+  | calibration hors strate (proxy : strates test 0.05/0.2, prédictions val non exportées, `ml_train_experiment_a_seq.py:1182-1183`), évaluée à ν=0.01 | +0.0092 [−0.0476,+0.0660] INDÉTERMINÉ | +0.0399 [+0.0112,+0.0687] INDÉTERMINÉ | +0.1012 [+0.0386,+0.1638] REPRÉSENTATIONNEL |
+
+  **D1 INDÉTERMINÉ sous 2 variantes sur 3, D3 REPR sous 2 sur 3 ; seule la variante
+  réajustée sur les labels de la strate évaluée (Pearson² in-sample, optimiste) inverse
+  les verdicts.** Interprétation : le pooling de td2 améliore la décodabilité linéaire
+  (sonde h @ν=0.01 : 0.882 vs 0.861 pour td0 ; Pearson²(z) 0.935 vs 0.885) mais dégrade la
+  calibration (pente 0.844, gap Pearson²−identité +0.064, le plus grand des 4 bras) —
+  c'est cette recalibration in-sample qui fait basculer D1. Le gain TD3 persiste sous
+  calibration hors strate (+0.1012, REPRÉSENTATIONNEL) et est ramené à +0.0447 < δ_R sous
+  Pearson² in-sample : sous recalibration sur la strate évaluée, il est surtout de la
+  calibration. **Verdicts publiés inchangés** (définition amendée = identité).
+- Erratum : l'amendement commité dans `182c8fc` porte encore l'en-tête « BROUILLON POUR
+  REVUE, NE PAS COMMITER » — anomalie de contenu signalée sans modification du fichier
+  commité ; erratum séparé : `outputs/prereg/td_encoder_prereg_amendment_1_erratum.md`.
 - Run 964 min (voir Limites).
 
 ### Open questions
