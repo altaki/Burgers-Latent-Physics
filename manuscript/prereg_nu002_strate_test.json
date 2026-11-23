@@ -1,0 +1,114 @@
+{
+  "experiment": "TD_extra_strate_nu002",
+  "addendum_technique_of": "manuscript/prereg_nu002_strate_test.md",
+  "statut": "addendum technique machine-lisible, déclare AVANT toute génération ν=0.02 ; l'évaluateur main_evaluate_td_extra.py lit ce fichier et échoue (exit 1) si l'ensemble des conditions évaluées diffère",
+  "stratum": {
+    "nu": 0.02,
+    "npz": "outputs/data/test_extra_data_nu002.npz",
+    "n_trajectories": 150,
+    "dataset_version": "nu_sweep_v1_test_extra_nu0p02",
+    "windows": {"w": 25, "stride": 1, "t_range": [24, 99], "n_windows_attendues": 11400}
+  },
+  "bras": ["td0", "td1", "td3"],
+  "bras_exclus": {"td2": "comparaison D1 confondue par le pooling global (README.md:1212-1215) ; D3=TD3-TD2 non calculable"},
+  "protocoles": [
+    {"id": "heldout_nu005", "train_nu": [0.01, 0.2], "statut": "CONFIRMATOIRE", "mode_a_nu002": "interpolation (0.01 < 0.02 < 0.20)"},
+    {"id": "heldout_nu", "train_nu": [0.05, 0.2], "statut": "EXPLORATOIRE", "mode_a_nu002": "extrapolation (0.02 < 0.05, sous la plage train)"}
+  ],
+  "modes": ["energy_centered", "none"],
+  "seeds": [42, 7, 123, 2024, 999],
+  "co_primaires": ["r2_identity", "r2_calibree_hors_strate"],
+  "calibration_hors_strate": {
+    "fit_on": "predictions de VALIDATION exportees (outputs/predictions_val/<run>_predictions_val.npz, inférence seule)",
+    "jamais_sur": "la strate évaluee ν=0.02",
+    "fallback_si_export_refuse": "proxy strates test != 0.02, déclaré en limite (README.md:1248-1250)",
+    "metrique": "R2 identité sur prédictions calibrées a*z+b (catégorie 3, README.md:1183-1186)"
+  },
+  "decision_rule": {
+    "n": 5,
+    "delta_R": 0.05,
+    "ic": "unilateral_95",
+    "distribution": "t_ddl4",
+    "t_0.95_4": 2.1318,
+    "appariement": "par graine (meme seed)",
+    "agregation_conjonctive": {"L": "min(borne_inf_r2_identity, borne_inf_r2_calibree)", "U": "max(borne_sup_r2_identity, borne_sup_r2_calibree)"},
+    "etats_mutuellement_exclusifs": [
+      {"id": "E1", "label": "POSITIF_BORNE", "condition": "L > 0 AND U < delta_R", "sens": "effet > 0 démontré et < delta_R"},
+      {"id": "E2", "label": "POSITIF_NON_BORNE", "condition": "L > 0 AND U >= delta_R", "sens": "effet > 0 démontré, magnitude >= delta_R non exclue"},
+      {"id": "E3", "label": "NEGATIF", "condition": "L <= 0 AND U < delta_R", "sens": "effet >= delta_R exclu, signe non établi"},
+      {"id": "E4", "label": "INDETERMINE", "condition": "L <= 0 AND U >= delta_R"}
+    ],
+    "question_confirmatoire_repondue_par": "E1 ou E2 (L > 0 sur les deux co-primaires)",
+    "mean_ge_delta_R_abandonne": true,
+    "raison": "plafonne P(POSITIF|delta=delta_R) a 0.5 quel que soit n (README.md:1302-1304)"
+  },
+  "sd_a_priori": {
+    "sd_diff": 0.029,
+    "usage": "dimensionnement UNIQUEMENT ; la dispersion empirique nu005 de D1' (0.0043/0.0062) est informative seule",
+    "rho_r2id_r2cal": 0.99,
+    "MDE80_joint": 0.0405,
+    "FWER_joint_au_delta_0": 0.0429,
+    "power_joint_a_delta_0.05": 0.922
+  },
+  "comparaisons": [
+    {"id": "D1prime", "bras_haut": "td1", "bras_bas": "td0", "protocole": "heldout_nu005", "statut": "CONFIRMATOIRE"},
+    {"id": "D3prime", "bras_haut": "td3", "bras_bas": "td0", "protocole": "heldout_nu005", "statut": "EXPLORATOIRE_INJECTION"},
+    {"id": "TD3moinsTD1", "bras_haut": "td3", "bras_bas": "td1", "protocole": "heldout_nu005", "statut": "DESCRIPTIF"},
+    {"id": "D3_TD3moinsTD2", "statut": "NON_CALCULABLE", "raison": "td2 exclu (confondu)"}
+  ],
+  "predictions_nu002": {
+    "heldout_nu005": {
+      "biais_declare": "interpolation mélange ν=0.01 in-train (haut) et ν=0.05 held-out -> biais vers le haut",
+      "r2_par_bras": {
+        "td0": {"nu001": [0.9513, 0.0035], "nu005": [0.9238, 0.0084], "prediction": [0.9444, 0.0038], "plage_moy_moins_2sd": [0.9369, 0.9520]},
+        "td1": {"nu001": [0.9799, 0.0010], "nu005": [0.9476, 0.0041], "prediction": [0.9718, 0.0016], "plage_moy_moins_2sd": [0.9687, 0.9750]},
+        "td3": {"nu001": [0.9957, 0.0009], "nu005": [0.9883, 0.0052], "prediction": [0.9938, 0.0015], "plage_moy_moins_2sd": [0.9908, 0.9969]}
+      },
+      "differences": {
+        "D1prime": {"nu001": 0.0286, "nu005": 0.0238, "prediction": [0.0274, 0.0043], "plage_moy_moins_2sd": [0.0189, 0.0359], "etat_attendu": "E1"},
+        "D3prime": {"nu001": 0.0444, "nu005": 0.0645, "prediction": [0.0494, 0.0049], "plage_moy_moins_2sd": [0.0397, 0.0591], "etat_attendu": "E2"},
+        "TD3moinsTD1": {"nu001": 0.0158, "nu005": 0.0407, "prediction": [0.0220, 0.0015], "plage_moy_moins_2sd": [0.0190, 0.0250]}
+      }
+    },
+    "heldout_nu": {
+      "biais_declare": "ν=0.01 held-out, ν=0.05 in-train (mêmes runs)",
+      "r2_par_bras": {
+        "td0": {"nu001": [0.8747, 0.0201], "nu005": [0.9641, 0.0071], "prediction": [0.8971, 0.0165], "plage_moy_moins_2sd": [0.8642, 0.9300]},
+        "td1": {"nu001": [0.9057, 0.0241], "nu005": [0.9889, 0.0022], "prediction": [0.9265, 0.0176], "plage_moy_moins_2sd": [0.8912, 0.9618]},
+        "td3": {"nu001": [0.9773, 0.0053], "nu005": [0.9951, 0.0013], "prediction": [0.9818, 0.0040], "plage_moy_moins_2sd": [0.9737, 0.9899]}
+      },
+      "differences": {
+        "D1prime": {"nu001": 0.0310, "nu005": 0.0248, "prediction": [0.0294, 0.0220], "plage_moy_moins_2sd": [-0.0145, 0.0734]},
+        "D3prime": {"nu001": 0.1026, "nu005": 0.0310, "prediction": [0.0847, 0.0173], "plage_moy_moins_2sd": [0.0501, 0.1193]},
+        "TD3moinsTD1": {"nu001": 0.0716, "nu005": 0.0062, "prediction": [0.0553, 0.0202], "plage_moy_moins_2sd": [0.0149, 0.0957]}
+      }
+    },
+    "regle_plages": "plages sur la MOYENNE des 5 graines (moy ± 2 sd inter-graines de la valeur interpolée par graine, w=0.25 linéaire en ν) ; hors plage = falsification RAPPORTEE (pas STOP), et on teste D'ABORD la linéarité en ν (recalcul log-ν) avant de conclure",
+    "plages_ports_sur": "moyenne des 5 graines ; valeurs par run rapportees à part"
+  },
+  "stratification_plage_nuD": {
+    "plage_train_par_protocole": "max νD sur fenêtres train du protocole (heldout_nu: ν∈{0.05,0.20}; heldout_nu005: ν∈{0.01,0.20}), référence max train complet 1.8121 (README.md:26-28, 885-886)",
+    "frac_hors_plage": "fraction des 11400 fenêtres ν=0.02 hors plage, rapportée par protocole",
+    "metriques_stratifiees": ["r2_identity", "r2_calibree", "spearman", "pente", "rel_rmse", "M6"],
+    "verdict_sur": "strate complète ; version in-plage à côté, exploratoire"
+  },
+  "nan_policy": "exit 1 sur toute valeur NaN dans les métriques évaluées",
+  "conditions_evaluees_attendues": {
+    "description": "ensemble exact des 60 runs évalués (3 bras × 2 protocoles × 2 modes × 5 graines) ; l'évaluateur échoue si l'ensemble diffère",
+    "runs": [
+      "td0_heldout_nu005_zenergy_centered_s42", "td0_heldout_nu005_zenergy_centered_s7", "td0_heldout_nu005_zenergy_centered_s123", "td0_heldout_nu005_zenergy_centered_s2024", "td0_heldout_nu005_zenergy_centered_s999",
+      "td0_heldout_nu005_s42", "td0_heldout_nu005_s7", "td0_heldout_nu005_s123", "td0_heldout_nu005_s2024", "td0_heldout_nu005_s999",
+      "td0_heldout_nu_zenergy_centered_s42", "td0_heldout_nu_zenergy_centered_s7", "td0_heldout_nu_zenergy_centered_s123", "td0_heldout_nu_zenergy_centered_s2024", "td0_heldout_nu_zenergy_centered_s999",
+      "td0_heldout_nu_s42", "td0_heldout_nu_s7", "td0_heldout_nu_s123", "td0_heldout_nu_s2024", "td0_heldout_nu_s999",
+      "td1_heldout_nu005_zenergy_centered_s42", "td1_heldout_nu005_zenergy_centered_s7", "td1_heldout_nu005_zenergy_centered_s123", "td1_heldout_nu005_zenergy_centered_s2024", "td1_heldout_nu005_zenergy_centered_s999",
+      "td1_heldout_nu005_s42", "td1_heldout_nu005_s7", "td1_heldout_nu005_s123", "td1_heldout_nu005_s2024", "td1_heldout_nu005_s999",
+      "td1_heldout_nu_zenergy_centered_s42", "td1_heldout_nu_zenergy_centered_s7", "td1_heldout_nu_zenergy_centered_s123", "td1_heldout_nu_zenergy_centered_s2024", "td1_heldout_nu_zenergy_centered_s999",
+      "td1_heldout_nu_s42", "td1_heldout_nu_s7", "td1_heldout_nu_s123", "td1_heldout_nu_s2024", "td1_heldout_nu_s999",
+      "td3_heldout_nu005_zenergy_centered_s42", "td3_heldout_nu005_zenergy_centered_s7", "td3_heldout_nu005_zenergy_centered_s123", "td3_heldout_nu005_zenergy_centered_s2024", "td3_heldout_nu005_zenergy_centered_s999",
+      "td3_heldout_nu005_s42", "td3_heldout_nu005_s7", "td3_heldout_nu005_s123", "td3_heldout_nu005_s2024", "td3_heldout_nu005_s999",
+      "td3_heldout_nu_zenergy_centered_s42", "td3_heldout_nu_zenergy_centered_s7", "td3_heldout_nu_zenergy_centered_s123", "td3_heldout_nu_zenergy_centered_s2024", "td3_heldout_nu_zenergy_centered_s999",
+      "td3_heldout_nu_s42", "td3_heldout_nu_s7", "td3_heldout_nu_s123", "td3_heldout_nu_s2024", "td3_heldout_nu_s999"
+    ]
+  },
+  "inference_seule": {"retraining": false, "checkpoints_hash_avant_apres": true, "ecriture_models": false}
+}
