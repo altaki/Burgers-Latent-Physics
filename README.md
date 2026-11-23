@@ -5,6 +5,38 @@ dynamics of the viscous 1D Burgers equation?
 
     u_t + u u_x = nu * u_xx      on [0, L] periodic
 
+## Synthèse (v1.0-preservation)
+
+**Résultat central : préservation d'une observable injectée, pas découverte.** Sans
+supervision, z ne s'aligne pas sur νD (window-A : Spearman 0.25–0.44 @ν=0.01 held-out) ;
+injectée via l'identité exacte dE/dt = −νD, νD est **préservée** (Step 6 A1 « traceur
+dynamique » ; B1 ν=0.05 held-out R² 0.927, Spearman 0.985 ; TD3 R² 0.977).
+
+1. **Plafond analytique** (estimateur 2 snapshots, sans réseau) : R² identité 0.9995 @ν=0.01
+   (`outputs/logs/experiment_a_seq_analytic_baseline.json`).
+2. **Campagne TD** (80 runs, prereg `515cf5b` + amendment `182c8fc`, artefacts `91199bc`) :
+   verdicts machine D1 (TD2−TD0) et D2 (TD1−TD0) **INDÉTERMINÉS**, D3 (TD3−TD2, exploratoire,
+   injection) REPRÉSENTATIONNEL ; écart au plafond 0.125 (TD0) → 0.022 (TD3) fermé presque
+   entièrement par l'injection de ∫u·∂ₜu ; aucun biais générique testé ne le ferme.
+3. **Résultats négatifs et limites** : C6/C6' jamais satisfaits en heldout_nu (coût de
+   reconstruction de la perte z ≈ +22 % relatif : rec_z 0.197 vs rec_none 0.162, et
+   rec_z > plancher PCA k=8 = 0.187) ; 3–5 graines par bras ; dataset unique (1D, T=2,
+   3 valeurs de ν) ; la strate test ν=0.01 a été consultée de nombreuses fois depuis le
+   Step 5 ; puissances post-hoc à Δ=δ_R ≤ 0.5 (MDE80 0.06–0.08 à n=5).
+4. **Portée du transfert** : en ν uniquement (extrapolation ν=0.01, interpolation ν=0.05),
+   magnitude dans la plage d'entraînement (0 % des fenêtres test hors plage :
+   max νD test 1.4509 < max train 1.8121) ; aucune claim au-delà.
+5. **Méthodologie** : preregs commités avant les runs ; bug de filtre prouvé à 8 décimales,
+   corrigé, 10 runs erronés archivés ; déterminisme bit à bit validé inter-session ; règle :
+   **le contenu d'un commit se vérifie par `git show --stat`, jamais par son message**
+   (anomalie `182c8fc` : le message annonçait une note README absente du commit — impact
+   nul, note ajoutée en `e49a957`). Inventaire des définitions de R² en Step 9 :
+   évaluation = identité, analyses de latents = Pearson² (affine in-sample), sondes
+   linéaires = affine ajusté sur train évalué sur test.
+
+Voir « Inventaire de reproductibilité » (fin du README) : SHA-256 des données, lock
+d'environnement, commandes canoniques, mapping résultat → artefact.
+
 ## Repository layout
 
 Flat prototype (single commit; the `ml/`, `pde/`, `utils/` package dirs were moved to
@@ -678,6 +710,14 @@ complex. No single dim carries νD at held-out ν (|ρ| ≤ 0.57).
 5. **ν-conditioned models / finer ν sweep near 0.01**: dataset-level options if a residual
    held-out gap remains after 2–3.
 
+- **Écart au pré-enregistrement (définition du R²)** : le critère Step 5 (ligne 569) dit
+  « R² held-out = **affine** R²(νD ~ z) @ν=0.01 ≥ 0.5 (C2: 0.69) » ; le code calcule une R²
+  **identité** (`verdict_a_seq`, `ml_train_experiment_a_seq.py:801` ← `_subset_metrics:594-595`
+  ; la référence C2 0.69 est aussi une identité : `physics_candidates.py:97` via
+  `ml_train_experiment_c.py:421`). Identité ≤ affine in-sample ⇒ le critère « ≥ seuil »
+  était évalué **plus strictement** que le texte. Verdict inchangé : NOT IDENTIFIABLE est
+  décidé par Spearman < 0.5, le critère R² n'est pas décisif ici.
+
 ## Step 6 — Experiment A-Physics (implemented, pré-enregistré `212db0f` — voir `PREREGISTRATION_experiment_a_physics_v1.md`, runs done — results below)
 
 Motivation (Step 5 audit): νD is present in h (linear probe 0.55–0.78 @ν=0.01 held-out)
@@ -858,6 +898,13 @@ Métriques ν=0.01 held-out (test : 3 800 fenêtres / 50 trajectoires), z en **u
   t=1.0 : h1 +0.86, h4 −0.81) → le signal νD dans h n'est pas réductible aux seuls niveaux E, D.
 - **Transfert** : « transférable » ne vaut que pour l'**extrapolation ν = 0.01** (held-out) ;
   aucune claim au-delà.
+- **Écart au pré-enregistrement (définition du R²)** : le prereg
+  (`PREREGISTRATION_experiment_a_physics_v1.md:89`) dit « R²_affine ≥ 0.5 » ; le code calcule
+  une R² **identité** (`verdict_a_seq`, `ml_train_experiment_a_seq.py:801,829-833` ←
+  `_subset_metrics:594-595`). aphys : identité 0.844, Pearson² in-sample 0.841–0.890
+  (`main_analyze_window_a_latents.py:80`) — les deux ≥ 0.5 → `held_ok` inchangé ; le verdict
+  PARTIAL est dû au rec RMSE structurel (> 0.15), pas au R². Identité ≤ affine in-sample ⇒
+  critère « ≥ seuil » évalué plus strictement.
 - **Interprétation** (garde-fou du prereg) : L_z injecte νD via dE/dt = −νD → ces runs montrent
   la **préservation** d'une observable injectée (z scalaire quasi physique, pente ≈ 0.93), pas
   sa découverte. C2, supervisé sur νD, montre l'**apprenabilité** du canal énergie par un CNN —
@@ -896,6 +943,11 @@ la dissipation au sein des trajectoires, à ν=0.01 held-out, w=25, t ∈ [0.48,
   implémentation non conforme au §4 (comparaison appariée vs none substituée à la condition 4
   vs baseline E_t) ; corrigé en `ccb139a` après relecture du texte commité `5623042`, dans le
   sens du texte. Verdict avant : PARTIEL → après : TRACEUR DYNAMIQUE.
+- Définition du R² : les critères M1–M8 sont des corrélations de **Pearson** (aucun seuil de
+  R²) → verdict inchangé ; `none_recal` et la baseline E_t sont des recalibrations **affine
+  ajustées sur le train, évaluées sur le test** (catégorie 3 :
+  `main_analyze_a1_intra_trajectory.py:381-395, 546-555`), pas des Pearson² ; l'horloge
+  affine par trajectoire est un fit in-sample (Pearson² par traj, `:350-358`).
 - Note Step 6 : `frac_dDdt_gt0` = 22.05 % = 2514/11400 (dénominateur poolé sur les 3 strates) ;
   fraction intra-strate ν=0.01 = 2514/3800 = **66.2 %** (ν=0.05 : 39.8 %, ν=0.20 : 0 %).
   Reproduit exactement par `main_reproduce_phase_strat.py` (`outputs/logs/phase_strat_reproduction.json`).
@@ -982,6 +1034,12 @@ Interpolation vs extrapolation (mêmes graines, apparié) :
    archivées : `outputs/logs/b1_eval_archive/` (pre-`166c1ff`, pre-`5e6f24e`, HORODATAGES.md).
    pip freeze Windows non consignable depuis le sandbox : à produire côté env VS Code
    (`pip freeze > outputs/logs/b1_eval_archive/pip_freeze_windows.txt`).
+  5. Définition du R² : C2 (« R² affine ≥ 0.5 », `b1_interpolation_prereg.md:61`,
+  `b1_interpolation_prereg.json:147-148`) est calculé en **identité**
+  (`main_evaluate_b1.py:86-87`, label `:94`) : 0.927 ≥ 0.5 ; Pearson² ≥ identité in-sample ⇒
+  C2 passe sous les deux définitions → verdict inchangé. La baseline `E_t_affine`
+  (a=0.354, b=0.0219, OLS sur train filtré, 0.766 @ν=0.05 test) est une catégorie 3
+  (affine train→test).
 
 ### Limites
 C6 échoue avec IC [0.177, 0.215] excluant 0.15 — structurel (même constat au Step 6, tous
@@ -1110,16 +1168,27 @@ Aucune comparaison confirmatoire n'atteint δ_R = 0.05 : TD1 donne un gain cohé
 5/5 graines (+0.0310, borne inf. unil. +0.0034), inférieur au seuil pré-enregistré →
 descriptif, hors verdict.
 
-### Inventaire des définitions de R² (complété après relecture du code)
-| R² publié | définition réelle | fichier:ligne |
-|---|---|---|
-| Évaluation Step 5 / Step 6 (0.844) / plafond analytique (0.9995) | **identité** `1−ss_res/ss_tot` | `ml_train_experiment_a_seq.py:593-595` (`r2_holdout` ligne 799 ; `main_analytic_nuD_baseline.py:157` → `mt.evaluate_predictions`) |
-| B1 (0.927, nu005) | **identité** (label `r2_affine_nuD_z`) | `main_evaluate_b1.py:86` (label ligne 94 ; aussi 196, 206) |
-| C2 supervisé (0.69, experiment_c) | **identité** `1−mse/var_target` | `physics_candidates.py:97`, via `ml_train_experiment_c.py:421` (`compute_target_metrics`) |
-| TD (ce step) | **identité** (label `r2_affine_nuD_z`) | `main_evaluate_td.py:88` (label ligne 89) |
-| Analyses de latents A-Physics (r²aff 0.890/0.841/0.889) | **affine = Pearson²** (fit univarié, métriques sur valeurs calibrées) | `physics_candidates.py:106-119` (`fit_affine_calibration`), `main_analyze_window_a_latents.py:80` |
-| Sondes / classements par dimension (affine R², README:221) | **affine = Pearson²** | `physics_candidates.py:336+` (`rank_candidates_against_latent`, `affine_r2`), `main_identify_latent_variable.py:368` |
-| A1 recalibration affine par trajectoire | **affine = Pearson²** | `main_analyze_a1_intra_trajectory.py:381, 546` |
+### Inventaire des définitions de R² — trois catégories (relecture complète du code)
+1. **Identité** `1−ss_res/ss_tot` sur prédictions brutes (z ou prédiction du modèle, sans
+   ajustement) : évaluations Step 5 / Step 6 (`ml_train_experiment_a_seq.py:594-595`, lu par
+   `verdict_a_seq:801` ; plafond analytique `main_analytic_nuD_baseline.py:157` →
+   `mt.evaluate_predictions`), B1 (`main_evaluate_b1.py:86-87`, label `:94`), TD
+   (`main_evaluate_td.py:88-89`, label `:94`), C2 supervisé (`physics_candidates.py:97` via
+   `ml_train_experiment_c.py:421`).
+2. **Affine in-sample = Pearson²** (fit univarié y ~ a·x + b sur le **même** échantillon
+   évalué ; métriques sur valeurs calibrées) : `fit_affine_calibration`
+   (`physics_candidates.py:106-119`), per-dim h/z vs νD (`_affine_metrics`,
+   `main_analyze_window_a_latents.py:72-84`, r²aff 0.890/0.841/0.889), classements par
+   dimension (`physics_candidates.py:336+`, `main_identify_latent_variable.py:368`),
+   horloge affine par trajectoire A1 (fit in-sample, `main_analyze_a1_intra_trajectory.py:350-358`) ;
+   README:107-108, 221, 632 (« calibrated R² = Pearson² 0.09 »), 928 (B1 calibré 0.011–0.250).
+3. **Affine ajusté sur le TRAIN, évalué sur le TEST** (≠ Pearson², peut être négatif ;
+   la métrique est une identité sur les prédictions du fit) : sondes linéaires h/z
+   (`main_analyze_window_a_latents.py:145-153` + `_plain_metrics:86-95` →
+   `outputs/logs/h_linear_probe_window_a.json`, 0.55–0.78 @ν=0.01), baseline `E_t_affine` de
+   B1 (OLS train filtré, 0.766 @ν=0.05 test, `b1_interpolation_prereg.md:39`), A1
+   `none_recal` et baseline E_t (`main_analyze_a1_intra_trajectory.py:381-395, 546-555`) ;
+   README:882.
 
 Endroits du README où deux définitions coexistent : ligne 569 (seuil Step 6 libellé
 « affine R² ≥ 0.5 (C2: 0.69) » mais calculé en identité des deux côtés — label erroné),
@@ -1166,6 +1235,14 @@ d'évaluation (commit séparé), l'ancienne clé est conservée.
 - **Puissance mal déclarée** dans l'amendement §3 : « MDE 0.039 / puissance 0.93–0.94 à
   δ=0.05 » = condition borne inf. > 0 seule. Verdict REPR complet : P(REPR|Δ=δ_R) ≤ 0.5
   (0.50 D2 / 0.38 D1), MDE80 % = 0.062 (D2) / 0.082 (D1). **Aucun verdict modifié.**
+- **Sensibilité des verdicts D1/D3 à la définition du R²** (recalcul depuis les
+  `predictions_test.npz`, Pearson² in-sample par graine @ν=0.01, t unil. ddl=4) :
+  D1 td2−td0 = **+0.0503**, ICunil95 [+0.0366, +0.0641] → serait **REPRÉSENTATIONNEL** ;
+  D2 = +0.0443 → INDÉTERMINÉ (inchangé) ; D3 = **+0.0447 < δ_R** → INDÉTERMINÉ (le verdict
+  REPRÉSENTATIONNEL disparaîtrait). Cause : Pearson² retire la mauvaise calibration de
+  td2 (pente 0.844 ; sd R² identité 0.061 → 0.022 sous Pearson²). Les verdicts rapportés
+  suivent la définition **fixée par l'amendement §0 (identité), déclarée avant tout run
+  TD1–TD3** ; sensibilité déclarée ici, **aucun verdict modifié**.
 - Run 964 min (voir Limites).
 
 ### Open questions
@@ -1188,7 +1265,9 @@ d'évaluation (commit séparé), l'ancienne clé est conservée.
 4. **Méthodologie** : bug de filtre prouvé à 8 décimales et corrigé, runs erronés archivés ;
    80 runs tracés (git, dirty, versions, horaires), déterminisme bit à bit validé
    inter-session ; aucun effet du code déterministe démontré (IC à 0) ; inventaire des
-   définitions de R² (évaluation = identité ; analyses latentes = Pearson²).
+   définitions de R² en 3 catégories (évaluation = identité ; analyses de latents = Pearson²
+   affine in-sample ; sondes = affine train→test) ; règle « le contenu d'un commit se vérifie
+   par `git show --stat`, jamais par son message » (anomalie `182c8fc`, impact nul).
 5. **C6'** : la perte z a un coût en reconstruction — C6'a/C6'b échouent pour TD0/TD1 en
    heldout_nu (rec_z > rec_none apparié, rec_z > plancher PCA k=8 = 0.188) ; seul TD1 passe
    C6'b en nu005 (0.1830).
@@ -1209,3 +1288,77 @@ d'évaluation (commit séparé), l'ancienne clé est conservée.
   n=5 ; ≈ 0.058 à n=10 (t(0.95,9)=1.8331, t(0.80,9)=0.8834, se=0.00917).
 - **Budget** : n=5 → 20 runs ≈ 9–10 h CPU ; n=10 → 40 runs ≈ 18–20 h. Ordre : heldout_nu
   d'abord ; TD0/TD1 servent de référence (aucun rerun).
+
+---
+
+## Inventaire de reproductibilité (v1.0-preservation)
+
+### Données (lecture seule)
+- Régénération documentée (**ne jamais lancer `main_generate_data.py` sans feu vert
+  explicite** — les npz de `outputs/data/` sont la vérité terrain, chargés avec
+  `allow_pickle=True`, jamais modifiés) : `python3 main_generate_data.py`
+  (builder `pde_dataset_builder.py`).
+- Vérification d'intégrité (PowerShell) :
+  `Get-FileHash outputs\data\train_data_nu_sweep.npz -Algorithm SHA256` (idem val/test).
+  SHA-256 constatés :
+  | fichier | SHA-256 |
+  |---|---|
+  | outputs/data/train_data_nu_sweep.npz | dab467cfbb3daccba6b355b353adb07225dbc56004aeee0018483a2ff494768f |
+  | outputs/data/val_data_nu_sweep.npz | 07b67e8b6ca9d84d7efbe792eaa03bba8ae1204fcab40c8eb5a24d417e2edf51 |
+  | outputs/data/test_data_nu_sweep.npz | e501f91f5bb73258eb63957bb7f54a091b1a4dd0a0db53a8469283cd881060bc |
+  | outputs/data/train_data.npz (legacy) | db2db07a98bfc13af98fc83627d837a7c16eb276083cee967a4c2355622e8e71 |
+  | outputs/data/val_data.npz (legacy) | 86e55d74b81e84cbb928dd0ed85e448480e679a52fb90d9926dc48570607fbef |
+  | outputs/data/test_data.npz (legacy) | 9454dc8ba035b50d4bcdda335e13c3be6a1694d42621e1ce5846c2fe4911b8f3 |
+
+### Environnement
+- `requirements-lock.txt` (racine, **UTF-8**) : freeze exact — torch==2.12.0+cpu
+  (`torch.__version__` ; le freeze pip brut affiche `torch==2.12.0`), numpy==2.4.1,
+  pandas==2.3.3, scipy==1.17.1, scikit-learn==1.8.0. Freeze brut historique (UTF-16) :
+  `outputs/logs/b1_eval_archive/pip_freeze_windows.txt`.
+- 4 threads ; déterminisme bit à bit à code+graine fixés, validé inter-session :
+  `outputs/logs/td_corrected/td_determinism_check_postfix.log` — **commité dans `1a93648`**
+  (vérifié : `git log --oneline -1 -- outputs/logs/td_corrected/td_determinism_check_postfix.log`)
+  ; écart max 0.0 sur 405 métriques + 20 tableaux npz, exit 0.
+
+### Encodage des logs
+- Les logs écrits par `Tee-Object` (PowerShell) sont en **UTF-16** : lecture Linux
+  `iconv -f UTF-16LE -t UTF-8 <log>` ; PowerShell `Get-Content -Encoding Unicode <log>`.
+
+### Commandes canoniques (Windows, PowerShell, python3)
+- Pré-checks avant toute boucle (règle 0.3 + garde-fou filtre) :
+  `git status --porcelain --untracked-files=no` (doit être vide) ;
+  `python3 td_protocols.py --check` (exit 0) ;
+  `python3 main_determinism_check.py` (exit 0).
+- Run unitaire :
+  `python3 -u main_train_td.py --encoder td0 --protocol heldout_nu --z-target-mode energy_centered --seed 42 2>&1 | Tee-Object -FilePath "outputs/logs/td_corrected/td_run_td0_heldout_nu_zenergy_centered_s42.log"; if ($LASTEXITCODE -ne 0) { throw "run KO" }`
+  (logs dans `outputs/logs/td_corrected/`, jamais dans un log déjà suivi/commité).
+- Boucle 60 runs TD1–TD3, ordre `td2 → td1 → td3`, protocoles `heldout_nu` puis
+  `heldout_nu005`, modes `energy_centered`/`none`, graines 42,7,123,2024,999 (une
+  instruction par ligne ou séparées par `;`).
+- Évaluation : `python3 main_evaluate_td.py 2>&1 | Tee-Object -FilePath outputs/logs/td_corrected/td_evaluate.log`
+  → `outputs/logs/td_encoder_results.json`.
+- Validation bit à bit d'un run existant : `python3 main_validate_run.py --compare-only <dossier_run>`.
+- Hachage des artefacts : `Get-ChildItem -Recurse outputs/models/latent_dynamics_autoencoder_seq/<run> | Get-FileHash -Algorithm SHA256`
+  → `outputs/logs/td_corrected/td_artifacts_sha256.txt` (300 fichiers, commit `91199bc`).
+
+### Mapping résultat → artefact / commit
+| résultat | artefact / commit |
+|---|---|
+| Synthèse + Step 8/9 + écarts | README, commits `e49a957` (doc) + ce commit (synthèse + inventaire) |
+| Clé `r2_identity_nuD_z` en doublon | `12b57db` |
+| Plafond analytique R² 0.9995 | `outputs/logs/experiment_a_seq_analytic_baseline.json` |
+| Step 5 window-A (z non aligné) | `outputs/models/latent_dynamics_autoencoder_seq/window_w25_*` |
+| Step 6 A-Physics (prereg `212db0f`) | `window_w25_heldout_nu_z*` + `PREREGISTRATION_experiment_a_physics_v1.md` |
+| A1 (prereg `5623042`, verdict `ccb139a`) | `outputs/prereg/a1_intra_trajectory_prereg.md` + `main_analyze_a1_intra_trajectory.py` |
+| B1 (prereg `f431e66`, amend. `fc1075b`, artefacts `a6cb108`) | `w25_heldout_nu005_z*` + `outputs/prereg/b1_interpolation_prereg*` |
+| TD0 corrigé (10 runs heldout_nu) | dossiers `td0_heldout_nu_*`, commit `1a93648` + log postfix |
+| TD0 nu005 + TD1–TD3 (70 runs) | dossiers `td0_heldout_nu005_*`, `td{1,2,3}_*`, commit `91199bc` + SHA-256 |
+| Runs erronés archivés (hors verdict) | `td0_indist_nu001_*` + `outputs/prereg/td0_indist_nu001_archive_note.md`, commit `d844a7a` |
+| Verdicts D1/D2/D3 + C6' | `outputs/logs/td_encoder_results.json` (`verdict_principal_D1 = "INDETERMINE"`) |
+| Prereg TD + amendment 1 | `outputs/prereg/td_encoder_prereg.{md,json}` (`515cf5b`) + `td_encoder_prereg_amendment_1.md` (`182c8fc`) |
+
+### Note sur la clé `r2_identity`
+- Les artefacts existants (JSON de métriques) ne contiennent **pas** la clé
+  `r2_identity_nuD_z` / `r2_identity` (ajoutée en `12b57db`, code seul) : une réévaluation
+  produit un JSON avec une clé de plus et des **valeurs identiques** — différence de
+  format, pas de non-reproductibilité.
