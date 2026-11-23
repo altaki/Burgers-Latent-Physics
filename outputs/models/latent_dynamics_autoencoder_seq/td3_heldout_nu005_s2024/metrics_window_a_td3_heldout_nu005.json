@@ -1,0 +1,638 @@
+{
+  "experiment": "experiment_a_seq",
+  "protocol": "heldout_nu005",
+  "window_size": 25,
+  "encoder_mode": "td3",
+  "run_tag": "td3",
+  "num_threads": 4,
+  "traceability": {
+    "git_hash": "182c8fc8ed2d088608b3b82305213eadfe9053cd",
+    "git_branch": "main",
+    "working_tree_dirty": false,
+    "dirty_files": [],
+    "torch_version": "2.12.0+cpu",
+    "numpy_version": "2.4.1",
+    "python_version": "3.13.14 (tags/v3.13.14:fd17997, Jun 10 2026, 13:03:48) [MSC v.1944 64 bit (AMD64)]",
+    "num_threads": 4,
+    "deterministic_algorithms": true,
+    "start_time": "2026-11-22T21:51:34",
+    "train_val_nu": [
+      0.009999999776482582,
+      0.20000000298023224
+    ],
+    "z_target_standardizer": null,
+    "end_time": "2026-11-22T22:00:35"
+  },
+  "heldout_nu_values": [
+    0.01,
+    0.2
+  ],
+  "z_target_mode": "none",
+  "standardize_z_target": false,
+  "z_target_standardizer": null,
+  "monotone_rtol": 0.0,
+  "model_config": {
+    "model": "window_dynamics_autoencoder",
+    "encoder_mode": "td3",
+    "window_size": 25,
+    "nx": 1024,
+    "latent_dim": 8,
+    "conv_channels": [
+      16,
+      32,
+      32,
+      64,
+      64
+    ],
+    "kernel_size": 5,
+    "conv_stride": 2,
+    "trunk_dims": [
+      256
+    ],
+    "decoder_hidden_dims": [
+      64,
+      128
+    ],
+    "predictor_hidden_dims": [
+      64,
+      64
+    ],
+    "scalar_head_hidden_dims": [],
+    "activation": "relu",
+    "dropout": 0.0,
+    "loss": {
+      "reconstruction_weight": 1.0,
+      "prediction_weight": 1.0,
+      "monotonicity_weight": 0.0,
+      "variance_weight": 0.01,
+      "min_latent_variance": 0.01,
+      "monotonicity_mode": "squared_hinge",
+      "prediction_mode": "mse",
+      "z_weight": 0.0
+    }
+  },
+  "best_epoch": 10,
+  "best_val_loss": 0.18456617953745943,
+  "stopped_early": true,
+  "history": {
+    "train_loss": [
+      0.8683007671958521,
+      0.6079543157627708,
+      0.42932340025901794,
+      0.2573178372257634,
+      0.20953241122396368,
+      0.17783784019319634,
+      0.15208118686550542,
+      0.13305906714577423,
+      0.12048601652446546,
+      0.10819913448471773,
+      0.09857267213495154,
+      0.09221126923435613,
+      0.08335712875190535,
+      0.07824185100040938,
+      0.07306005517118856,
+      0.06853974022363361,
+      0.06430207351320669,
+      0.06171885717856256,
+      0.058988470639053145,
+      0.05671225597199641
+    ],
+    "val_loss": [
+      0.738647566971026,
+      0.47948347151279447,
+      0.2956345924264506,
+      0.23730514505976125,
+      0.20719626832949486,
+      0.20497985951994593,
+      0.19840190261602403,
+      0.20121694545996816,
+      0.19399463124965366,
+      0.18456617953745943,
+      0.20335513561964036,
+      0.19220996194764187,
+      0.18794482177025393,
+      0.20136757006770686,
+      0.18634235594617693,
+      0.19601310475092185,
+      0.19208825690181633,
+      0.19615411159239318,
+      0.19298278520766057,
+      0.20482447923014038
+    ]
+  },
+  "checkpoint_path": "C:\\Users\\baltaki\\Burgers_Latent_Physics\\Burgers Latent Physcis\\outputs\\models\\latent_dynamics_autoencoder_seq\\td3_heldout_nu005_s2024\\best_model.pt",
+  "reconstruction_rmse_test": 0.5316620322646596,
+  "latent_rank": {
+    "effective_rank": 4.0,
+    "eigenvalues": [
+      2.1547837257385254,
+      1.215872883796692,
+      0.31648942828178406,
+      0.14941750466823578,
+      0.04174238443374634,
+      0.012536541558802128,
+      0.002645630855113268,
+      0.000581588945351541
+    ],
+    "max_offline_residual": 4.265571594238281
+  },
+  "monotone_fraction_test": 0.585,
+  "test_losses": {
+    "total_loss": 0.2832815453619288,
+    "reconstruction_loss": 0.2826645177001493,
+    "prediction_loss": 0.0006086590772457911,
+    "monotonicity_loss": 3.730443374902199e-05,
+    "variance_loss": 0.0008367967618662014,
+    "z_loss": 0.0,
+    "monotone_atol": 0.0
+  },
+  "e0_quartile_edges": [
+    0.12736429274082184,
+    0.2375810369849205,
+    0.4981689900159836,
+    1.055410921573639,
+    1.9922449588775635
+  ],
+  "metrics": {
+    "global": {
+      "nu_dissipation": {
+        "mse": 0.22775786654258848,
+        "rmse": 0.4772398417384999,
+        "mae": 0.3524930716151159,
+        "max_abs_error": 2.5629690885543823,
+        "r2": -4.336252569324631,
+        "rel_rmse_mean": 2.8673016526191892,
+        "rel_rmse_std": 2.310033023427291,
+        "pearson": 0.029062397327837577,
+        "spearman": 0.1234171299215118,
+        "calibration_slope": 0.013907027263813031,
+        "calibration_intercept": 0.16326258874879832
+      }
+    },
+    "nu=0.01": {
+      "nu_dissipation": {
+        "mse": 0.33205679644516856,
+        "rmse": 0.5762436953626204,
+        "mae": 0.4488703962904401,
+        "max_abs_error": 2.5629690885543823,
+        "r2": -4.760914728746077,
+        "rel_rmse_mean": 3.4292548119913686,
+        "rel_rmse_std": 2.400190560923461,
+        "pearson": 0.02873760296159284,
+        "spearman": 0.2535118666873117,
+        "calibration_slope": 0.013637405995372675,
+        "calibration_intercept": 0.16357056384103408
+      }
+    },
+    "nu=0.05": {
+      "nu_dissipation": {
+        "mse": 0.22078861348067408,
+        "rmse": 0.46988148876144725,
+        "mae": 0.3604871223506665,
+        "max_abs_error": 2.331168532371521,
+        "r2": -4.118347538471793,
+        "rel_rmse_mean": 2.66717319766083,
+        "rel_rmse_std": 2.262376524469743,
+        "pearson": 0.01427451838072891,
+        "spearman": 0.03454654788198939,
+        "calibration_slope": 0.007068728796384384,
+        "calibration_intercept": 0.17446703346957318
+      }
+    },
+    "nu=0.2": {
+      "nu_dissipation": {
+        "mse": 0.13042818970192283,
+        "rmse": 0.3611484316758455,
+        "mae": 0.24812169620424118,
+        "max_abs_error": 1.6082549095153809,
+        "r2": -3.823181939489162,
+        "rel_rmse_mean": 2.328236037670216,
+        "rel_rmse_std": 2.1961743873128934,
+        "pearson": 0.028147211945194046,
+        "spearman": 0.19694224289948473,
+        "calibration_slope": 0.014288310171682157,
+        "calibration_intercept": 0.15344330767598616
+      }
+    },
+    "t=1": {
+      "nu_dissipation": {
+        "mse": 0.24772065566864726,
+        "rmse": 0.49771543643797833,
+        "mae": 0.3685960987318928,
+        "max_abs_error": 1.865601360797882,
+        "r2": -5.000635397529589,
+        "rel_rmse_mean": 2.8000970387612396,
+        "rel_rmse_std": 2.449619439327176,
+        "pearson": -0.009482977007116379,
+        "spearman": 0.07734210409351527,
+        "calibration_slope": -0.004295515471547133,
+        "calibration_intercept": 0.17876742795298084
+      }
+    },
+    "e0_quartile=0": {
+      "nu_dissipation": {
+        "mse": 0.05788575048746793,
+        "rmse": 0.24059457701176043,
+        "mae": 0.1962074358550461,
+        "max_abs_error": 0.5439022071659565,
+        "r2": -124.50347761529417,
+        "rel_rmse_mean": 8.852948433077318,
+        "rel_rmse_std": 11.20283346369543,
+        "pearson": -0.19093711491971121,
+        "spearman": -0.22107600546928075,
+        "calibration_slope": -0.01784217666891917,
+        "calibration_intercept": 0.028592090028145355
+      }
+    },
+    "e0_quartile=1": {
+      "nu_dissipation": {
+        "mse": 0.11435188678834395,
+        "rmse": 0.3381595581797799,
+        "mae": 0.2903056381328497,
+        "max_abs_error": 1.1209891140460968,
+        "r2": -52.13530699157141,
+        "rel_rmse_mean": 4.697847958443817,
+        "rel_rmse_std": 7.289396888054005,
+        "pearson": -0.17049979945090268,
+        "spearman": -0.0843566712220788,
+        "calibration_slope": -0.026174677423271425,
+        "calibration_intercept": 0.07718749137874709
+      }
+    },
+    "e0_quartile=2": {
+      "nu_dissipation": {
+        "mse": 0.22696394679879273,
+        "rmse": 0.4764073328558165,
+        "mae": 0.3932194944134686,
+        "max_abs_error": 1.2225768864154816,
+        "r2": -21.577165173373288,
+        "rel_rmse_mean": 2.8456541831908617,
+        "rel_rmse_std": 4.75154345169791,
+        "pearson": -0.2350668151283196,
+        "spearman": -0.2953320455214524,
+        "calibration_slope": -0.05836405547545182,
+        "calibration_intercept": 0.18807513416935237
+      }
+    },
+    "e0_quartile=3": {
+      "nu_dissipation": {
+        "mse": 0.5516752874162276,
+        "rmse": 0.7427484684711424,
+        "mae": 0.5565631077687879,
+        "max_abs_error": 2.5629690885543823,
+        "r2": -6.93459428405072,
+        "rel_rmse_mean": 1.7268845066973921,
+        "rel_rmse_std": 2.8168411890006717,
+        "pearson": -0.12315550151093302,
+        "spearman": -0.06912835958590413,
+        "calibration_slope": -0.049861719704043274,
+        "calibration_intercept": 0.44530997361306546
+      }
+    },
+    "per_trajectory": {
+      "nu_dissipation": {
+        "mse": 0.19776665392612305,
+        "rmse": 0.4447096287760397,
+        "mae": 0.33985039371086223,
+        "max_abs_error": 1.5903916813825307,
+        "r2": -5.5615064959559755,
+        "rel_rmse_mean": 2.671857087371795,
+        "rel_rmse_std": 2.561543772016394,
+        "pearson": 0.06329971228355236,
+        "spearman": 0.13084492644117518,
+        "calibration_slope": 0.02642904678645847,
+        "calibration_intercept": 0.1603996847264006
+      }
+    }
+  },
+  "baselines": {
+    "global_mean": {
+      "global": {
+        "nu_dissipation": {
+          "mse": 0.04270064279974439,
+          "rmse": 0.2066413385548603,
+          "mae": 0.14731060412115837,
+          "max_abs_error": 1.2800962483871492,
+          "r2": -0.0004546420763977821,
+          "rel_rmse_mean": 1.241520509644394,
+          "rel_rmse_std": 1.0002272952066436,
+          "pearson": 0.0,
+          "spearman": 0.0,
+          "calibration_slope": 0.027629701209472505,
+          "calibration_intercept": 0.16172168881906526
+        }
+      },
+      "nu=0.01": {
+        "nu_dissipation": {
+          "mse": 0.057647489867801854,
+          "rmse": 0.24009891684012624,
+          "mae": 0.16954934301848626,
+          "max_abs_error": 1.2800962483871492,
+          "r2": -0.0001369555147741064,
+          "rel_rmse_mean": 1.4288405626890053,
+          "rel_rmse_std": 1.000068475412946,
+          "pearson": 0.0,
+          "spearman": 0.0,
+          "calibration_slope": 0.02789454684505862,
+          "calibration_intercept": 0.16327187870850446
+        }
+      },
+      "nu=0.05": {
+        "nu_dissipation": {
+          "mse": 0.043165052555979445,
+          "rmse": 0.20776200941456896,
+          "mae": 0.1458149055575267,
+          "max_abs_error": 1.2160617864120515,
+          "r2": -0.000657312054915371,
+          "rel_rmse_mean": 1.1793128187776378,
+          "rel_rmse_std": 1.000328602037808,
+          "pearson": 0.0,
+          "spearman": 0.0,
+          "calibration_slope": 0.0292448904084832,
+          "calibration_intercept": 0.17117568627802313
+        }
+      },
+      "nu=0.2": {
+        "nu_dissipation": {
+          "mse": 0.02728938597545188,
+          "rmse": 0.16519499379657931,
+          "mae": 0.1265675637874622,
+          "max_abs_error": 1.1067223107803377,
+          "r2": -0.009150505556759336,
+          "rel_rmse_mean": 1.0649719175441945,
+          "rel_rmse_std": 1.0045648339240028,
+          "pearson": 0.0,
+          "spearman": 0.0,
+          "calibration_slope": 0.025749666374880006,
+          "calibration_intercept": 0.15071750147067245
+        }
+      },
+      "t=1": {
+        "nu_dissipation": {
+          "mse": 0.04133004357018309,
+          "rmse": 0.20329791826327956,
+          "mae": 0.1503462557451878,
+          "max_abs_error": 0.9320688998687776,
+          "r2": -0.0011539883876940937,
+          "rel_rmse_mean": 1.1437336623299004,
+          "rel_rmse_std": 1.000576827828675,
+          "pearson": 0.0,
+          "spearman": 0.0,
+          "calibration_slope": 0.029506718168336644,
+          "calibration_intercept": 0.17270821198947964
+        }
+      },
+      "e0_quartile=0": {
+        "nu_dissipation": {
+          "mse": 0.021102425834716998,
+          "rmse": 0.14526674029080777,
+          "mae": 0.14367044781599697,
+          "max_abs_error": 0.16750282874444997,
+          "r2": -44.75267325849366,
+          "rel_rmse_mean": 5.345253317047515,
+          "rel_rmse_std": 6.764072239301829,
+          "pearson": 0.0,
+          "spearman": 0.0,
+          "calibration_slope": 0.004511394233051954,
+          "calibration_intercept": 0.026406014627751825
+        }
+      },
+      "e0_quartile=1": {
+        "nu_dissipation": {
+          "mse": 0.011926459907221427,
+          "rmse": 0.10920833259061062,
+          "mae": 0.10112653499582776,
+          "max_abs_error": 0.1640463833336023,
+          "r2": -4.541807190867221,
+          "rel_rmse_mean": 1.5171658759770958,
+          "rel_rmse_std": 2.3541043287983694,
+          "pearson": 0.0,
+          "spearman": 0.0,
+          "calibration_slope": 0.011949110868857494,
+          "calibration_intercept": 0.06994032888547155
+        }
+      },
+      "e0_quartile=2": {
+        "nu_dissipation": {
+          "mse": 0.01006458476621799,
+          "rmse": 0.1003224041090423,
+          "mae": 0.0751479645100185,
+          "max_abs_error": 0.43055553793793044,
+          "r2": -0.0011713132119748337,
+          "rel_rmse_mean": 0.5992411309232746,
+          "rel_rmse_std": 1.0005854852095222,
+          "pearson": 0.0,
+          "spearman": 0.0,
+          "calibration_slope": 0.02779132137942972,
+          "calibration_intercept": 0.16266768120003555
+        }
+      },
+      "e0_quartile=3": {
+        "nu_dissipation": {
+          "mse": 0.13674449054376142,
+          "rmse": 0.36978979237366927,
+          "mae": 0.28247118060387855,
+          "max_abs_error": 1.2800962483871492,
+          "r2": -0.9667584860029048,
+          "rel_rmse_mean": 0.8597584381417617,
+          "rel_rmse_std": 1.4024116678076037,
+          "pearson": 0.0,
+          "spearman": 0.0,
+          "calibration_slope": 0.071398872280671,
+          "calibration_intercept": 0.4179106432409737
+        }
+      },
+      "per_trajectory": {
+        "nu_dissipation": {
+          "mse": 0.030159838754415382,
+          "rmse": 0.17366588252853635,
+          "mae": 0.13738530621847303,
+          "max_abs_error": 0.571438420570638,
+          "r2": -0.0006438091327862772,
+          "rel_rmse_mean": 1.043400882381676,
+          "rel_rmse_std": 1.0003218527717899,
+          "pearson": 0.0,
+          "spearman": 0.0,
+          "calibration_slope": 0.027629701209472723,
+          "calibration_intercept": 0.1617216888190653
+        }
+      }
+    },
+    "nu_oracle": {
+      "global": {
+        "nu_dissipation": {
+          "mse": 0.042740768526770896,
+          "rmse": 0.2067384060274503,
+          "mae": 0.14670731898626596,
+          "max_abs_error": 1.281763916673295,
+          "r2": -0.0013947677334895658,
+          "rel_rmse_mean": 1.242103700108038,
+          "rel_rmse_std": 1.0006971408640528,
+          "pearson": -0.041750044746240306,
+          "spearman": -0.01728526777217759,
+          "calibration_slope": -3.327581085871941,
+          "calibration_intercept": 0.7297604093990891
+        }
+      },
+      "nu=0.01": {
+        "nu_dissipation": {
+          "mse": 0.05764089990001034,
+          "rmse": 0.24008519300450484,
+          "mae": 0.1689328337915431,
+          "max_abs_error": 1.281763916673295,
+          "r2": -2.262494567117912e-05,
+          "rel_rmse_mean": 1.428758891462539,
+          "rel_rmse_std": 1.0000113124088503,
+          "pearson": 0.0,
+          "spearman": 0.0,
+          "calibration_slope": 0.027637490932062116,
+          "calibration_intercept": 0.1633618861641721
+        }
+      },
+      "nu=0.05": {
+        "nu_dissipation": {
+          "mse": 0.043236772204845945,
+          "rmse": 0.20793453826828756,
+          "mae": 0.14389009022486998,
+          "max_abs_error": 1.22074060882552,
+          "r2": -0.002319925368386988,
+          "rel_rmse_mean": 1.1802921387667575,
+          "rel_rmse_std": 1.0011592907067222,
+          "pearson": 0.0,
+          "spearman": 0.0,
+          "calibration_slope": 0.028487636124416422,
+          "calibration_intercept": 0.17143834965891766
+        }
+      },
+      "nu=0.2": {
+        "nu_dissipation": {
+          "mse": 0.027344633475456386,
+          "rmse": 0.16536212829864155,
+          "mae": 0.12729903294238476,
+          "max_abs_error": 1.105054642494192,
+          "r2": -0.011193535862038084,
+          "rel_rmse_mean": 1.066049392999463,
+          "rel_rmse_std": 1.0055811930729601,
+          "pearson": 0.0,
+          "spearman": 0.0,
+          "calibration_slope": 0.025986554922942596,
+          "calibration_intercept": 0.15063369276689012
+        }
+      },
+      "t=1": {
+        "nu_dissipation": {
+          "mse": 0.04139906221847866,
+          "rmse": 0.20346759500834194,
+          "mae": 0.1498249702716567,
+          "max_abs_error": 0.9337365681549235,
+          "r2": -0.0028258543971477756,
+          "rel_rmse_mean": 1.1446882466498,
+          "rel_rmse_std": 1.0014119304248117,
+          "pearson": -0.03639758548382677,
+          "spearman": 0.021307957855190532,
+          "calibration_slope": -2.853042640993406,
+          "calibration_intercept": 0.6607341345492656
+        }
+      },
+      "e0_quartile=0": {
+        "nu_dissipation": {
+          "mse": 0.020817656776219492,
+          "rmse": 0.14428325189092284,
+          "mae": 0.1427931686134716,
+          "max_abs_error": 0.1658351604583042,
+          "r2": -44.135258664095204,
+          "rel_rmse_mean": 5.309064753710589,
+          "rel_rmse_std": 6.718277953768748,
+          "pearson": 0.38441746232840335,
+          "spearman": 0.3921576874240027,
+          "calibration_slope": 3.490388076895237,
+          "calibration_intercept": -0.5660842866257543
+        }
+      },
+      "e0_quartile=1": {
+        "nu_dissipation": {
+          "mse": 0.01152819828811899,
+          "rmse": 0.10736944764745225,
+          "mae": 0.09934081096415888,
+          "max_abs_error": 0.16237871504745655,
+          "r2": -4.3567489991022095,
+          "rel_rmse_mean": 1.4916193501816108,
+          "rel_rmse_std": 2.314465164806377,
+          "pearson": 0.14702059491151034,
+          "spearman": 0.1580567583773002,
+          "calibration_slope": 2.618254853919939,
+          "calibration_intercept": -0.3703997030544308
+        }
+      },
+      "e0_quartile=2": {
+        "nu_dissipation": {
+          "mse": 0.009966752156394957,
+          "rmse": 0.09983362237440328,
+          "mae": 0.07428427022082087,
+          "max_abs_error": 0.4288878696517847,
+          "r2": 0.00856055399632194,
+          "rel_rmse_mean": 0.5963215625373198,
+          "rel_rmse_std": 0.9957105231962139,
+          "pearson": 0.18193368125083179,
+          "spearman": 0.25975438810990903,
+          "calibration_slope": 7.023552634470096,
+          "calibration_intercept": -1.0182423284948416
+        }
+      },
+      "e0_quartile=3": {
+        "nu_dissipation": {
+          "mse": 0.1377885311358962,
+          "rmse": 0.37119877577370347,
+          "mae": 0.2838557946821152,
+          "max_abs_error": 1.281763916673295,
+          "r2": -0.9817746353640042,
+          "rel_rmse_mean": 0.8630343137672224,
+          "rel_rmse_std": 1.407755175932237,
+          "pearson": -0.20095592572614915,
+          "spearman": -0.2061908821542541,
+          "calibration_slope": -20.58693142116799,
+          "calibration_intercept": 3.9170561611271038
+        }
+      },
+      "per_trajectory": {
+        "nu_dissipation": {
+          "mse": 0.03019996448144187,
+          "rmse": 0.17378136977663017,
+          "mae": 0.13676209850262652,
+          "max_abs_error": 0.5731060888567837,
+          "r2": -0.001975101407355462,
+          "rel_rmse_mean": 1.044094740581171,
+          "rel_rmse_std": 1.0009870635564455,
+          "pearson": -0.04968218624845273,
+          "spearman": 0.002451357983340504,
+          "calibration_slope": -3.3275810858720907,
+          "calibration_intercept": 0.7297604093991087
+        }
+      }
+    }
+  },
+  "nuD_range_stratification": {
+    "nu": 0.05,
+    "nuD_train_max": 1.8336535692214966,
+    "global": {
+      "n": 3800,
+      "spearman": 0.03454654788198939,
+      "pearson": 0.01427451838072891,
+      "r2": -4.1183475384717925,
+      "rel_rmse": 2.66717319766083,
+      "calibration_slope": 0.02882581590992641
+    },
+    "in_range": {
+      "n": 3800,
+      "spearman": 0.03454654788198939,
+      "pearson": 0.01427451838072891,
+      "r2": -4.1183475384717925,
+      "rel_rmse": 2.66717319766083,
+      "calibration_slope": 0.02882581590992641
+    },
+    "out_of_range": {
+      "n": 0
+    },
+    "frac_out_of_range": 0.0
+  }
+}

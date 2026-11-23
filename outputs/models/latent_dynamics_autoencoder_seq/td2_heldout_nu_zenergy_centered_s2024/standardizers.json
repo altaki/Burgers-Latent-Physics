@@ -1,0 +1,13 @@
+{
+  "input_standardizer": {
+    "mean": 1.193395910374701e-12,
+    "std": 0.39128506385731643,
+    "eps": 1e-08
+  },
+  "z_target_standardizer": {
+    "mean": 0.1693434997866739,
+    "std": 0.18047745652277566,
+    "fit_on": "train",
+    "key": "nuD_est_t"
+  }
+}

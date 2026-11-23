@@ -1,0 +1,13 @@
+{
+  "input_standardizer": {
+    "mean": 1.193395910374701e-12,
+    "std": 0.39128506385731643,
+    "eps": 1e-08
+  },
+  "z_target_standardizer": {
+    "mean": 0.16928761414291538,
+    "std": 0.20083268178825894,
+    "fit_on": "train",
+    "key": "nu_dissipation_t"
+  }
+}
