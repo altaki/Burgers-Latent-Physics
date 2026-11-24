@@ -27,7 +27,15 @@ REPO = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
 import main_evaluate_td as ev  # numpy-only : spearman, m6_raidissement, run_metrics réutilisés
-from main_export_predictions_val import build_td_model_from_config  # dispatch encoder_mode (td0 vs td1/2/3)
+from main_export_predictions_val import build_td_model_from_config, TD_RE  # dispatch encoder_mode + parsing noms de runs
+
+
+def parse_td_run_name(name: str):
+    m = TD_RE.match(name)
+    if m is None:
+        raise ValueError(f"nom de run TD non reconnu: {name!r}")
+    zmode = m.group(3) or "none"
+    return m.group(1), m.group(2), ("energy_centered" if zmode == "energy_centered" else zmode), int(m.group(4))
 
 DATA_DIR = REPO / "outputs" / "data"
 MODELS_ROOT = REPO / "outputs" / "models" / "latent_dynamics_autoencoder_seq"
@@ -133,14 +141,14 @@ def predict_run_on_stratum(run_dir: Path, extra_npz: Path, device: str = "cpu") 
     model.load_state_dict(ckpt["model_state_dict"])
     pred = mt.predict_a_seq(model, ds, device=torch.device(device))
     z = pred["z"]
-    zmode = run_dir.name.split("_z")[-1] if "_z" in run_dir.name else "none"
+    bras, proto, zmode, seed = parse_td_run_name(run_dir.name)
     std_path = run_dir / "standardizers.json"
     if std_path.exists() and zmode != "none":
         std = json.loads(std_path.read_text(encoding="utf-8")).get("z_target_standardizer")
         if std:
             z = z * float(std["std"]) + float(std["mean"])
     return {
-        "z": z, "h": pred["h"], "meta": pred["meta"],
+        "z": z, "h": pred["h"], "meta": pred["meta"], "zmode": zmode, "bras": bras, "proto": proto, "seed": seed,
         "checkpoint_sha256_before": sha_before,
         "checkpoint_sha256_after": sha256_file(ckpt_path),
     }
@@ -213,8 +221,8 @@ def evaluate(stratum_npz: Path, prereg_json: Path, out: Path, preds_dir: Path, v
         mt.save_predictions_npz(
             ppath, z=z, h=pred["h"], meta=meta, u=pred.get("u"), dx=float(extra_raw_dx(stratum_npz)),
             split="test_extra", protocol=str(np.load(stratum_npz, allow_pickle=True)["protocol"]),
-            seed=int(run_dir.name.rsplit("_s", 1)[1]), window_size=WINDOW_SIZE,
-            z_target_mode=zmode, run_name=run_name,
+            seed=pred["seed"], window_size=WINDOW_SIZE,
+            z_target_mode=pred["zmode"], run_name=run_name,
             extra={"source": np.array("td_extra_eval"), "stratum": np.array(str(stratum_npz)),
                    "checkpoint_sha256": np.array(pred["checkpoint_sha256_before"])},
         )
@@ -364,6 +372,11 @@ def smoke(smoke_dir: Path) -> int:
     m6 = ev.m6_raidissement(d_s, np.ones(152, bool), 0.02, nuD_traj_s)
     rep["checks"]["m6_synth_finie"] = bool(np.isfinite(m6))
     rep["checks"]["m6_synth_vaut_2"] = bool(abs(m6 - 2.0) < 1e-9)
+    # (h) parsing des noms de runs TD (même regex que main_export_predictions_val.TD_RE)
+    b, p, zm, sd = parse_td_run_name("td3_heldout_nu005_zenergy_centered_s2024")
+    rep["checks"]["parse_z_run"] = (b, p, zm, sd) == ("td3", "heldout_nu005", "energy_centered", 2024)
+    b, p, zm, sd = parse_td_run_name("td0_heldout_nu_s123")
+    rep["checks"]["parse_none_run"] = (b, p, zm, sd) == ("td0", "heldout_nu", "none", 123)
     out = smoke_dir / "eval_nu002_smoke_report.json"
     out.write_text(json.dumps(rep, indent=2, default=str), encoding="utf-8")
     ok = all(v is True for k, v in rep["checks"].items() if k.endswith("_ok")) and rep["checks"].get("E1_ok")
