@@ -1270,6 +1270,71 @@ d'évaluation (commit séparé), l'ancienne clé est conservée.
 
 ---
 
+## Step 10 — Strate test inédite ν = 0.02 (évaluation seule, aucun réentraînement) — prereg `762db75` + addendum `ad5083c`, artefacts `891e2de`
+
+**Design** : strate `test_extra` ν=0.02 unique (150 traj, Nx=1024, dt=1e-4, 101 snapshots,
+seeds base 100000 disjoints des 900 existants) générée par `main_generate_data_nu_extra.py` ;
+les 60 checkpoints TD0/TD1/TD3 × 2 protocoles × 2 modes × 5 graines (td2 exclu) sont
+réévalués par **inférence seule** (`main_evaluate_td_extra.py`, `070a088` + fixes
+`f2c0c28`/`c3c0f71`/`486d854`). La strate n'est **pas commitée** (115 Mo ; convention :
+les npz nu_sweep ne sont pas trackés) ; reproductible via seed_base=100000 ; SHA-256
+`6174c9d3544791d8d1ffa7a04cad5e22d23261b4e8ea9d63c2514ca085dc945f`
+(`outputs/logs/nu002_eval_results.json:4`), identique au log de génération.
+Audit GO 20/20 (`outputs/logs/audit_nu_extra_nu002.json`) : gates pass_fraction 1.0,
+max|u| 1.8009, médiane |dE/dt+νD|/(νD) 0.00398, cell Péclet 0.5525 ; IC 50/50/50 ;
+mass0 ≤ 1.40e-15 ; énergie recomputée = stockée (diff 0.0) ; 150 seeds uniques, 0 overlap.
+
+**Intégrité de l'évaluation** (`outputs/logs/nu002_eval_results.json`) : 60/60 runs (`:826`),
+`checkpoint_unchanged: true` pour chacun (ex. `:22`, hash SHA-256 avant/après), 11 400
+fenêtres/run, 0 NaN, ensemble des conditions évaluées == prereg JSON
+(`manuscript/prereg_nu002_strate_test.json:96`, exit 1 sinon) ; co-primaires = R² identité +
+R² calibré (fit affine sur les prédictions de **validation** `outputs/predictions_val/`,
+jamais sur la strate test).
+
+**Verdicts tels quels** (règle E1–E4, δ_R=0.05, prereg json:29,54-58 ; résultats
+`nu002_eval_results.json:733-765`) — protocole CONFIRMATOIRE `heldout_nu005`
+(ν=0.02 = interpolation entre 0.01 in-train et 0.05 held-out) :
+- **D1′ (TD1−TD0) = +0.0267 (sd 0.0041) R² identité, L=+0.0228, U=+0.0345 →
+  E1_POSITIF_BORNE** (`:734-743`) ; état attendu E1 (prereg json:68) ; plage
+  [+0.0189, +0.0359] : dedans. **Le gap TD1 > TD0 se transfère à une viscosité jamais vue.**
+- **D3′ (TD3−TD0, injection) = +0.0701 (sd 0.0070), L=+0.0612, U=+0.0768 →
+  E2_POSITIF_NON_BORNE** (`:745-754`) ; attendu E2 (json:69) ; **hors plage**
+  [+0.0397, +0.0591] (json:69) → falsification rapportée.
+- TD3−TD1 (descriptif) = +0.0434, L=+0.0355, U=+0.0478 → E1 (`:756-765`) ; hors plage
+  [0.0190, 0.0250] (json:70).
+
+**R² identité par bras** (moy ± sd des 5 graines, mode z ; résultats json:769-814) vs plages
+prereg (json:63-65 heldout_nu005, 76-78 heldout_nu) :
+- `heldout_nu005` : TD0 0.9224±0.0073 (plage [0.9369, 0.9520]), TD1 0.9492±0.0052
+  ([0.9687, 0.9750]), TD3 0.9926±0.0046 (dans [0.9908, 0.9969]). TD0/TD1 **sous** leur
+  plage : **cohérent avec le biais vers le haut déclaré** de l'interpolation (json:61),
+  ce n'est pas une falsification.
+- `heldout_nu` (**EXPLORATOIRE**, extrapolation : train {0.05, 0.20}) : TD0 0.8910±0.0161
+  (dans [0.8642, 0.9300]), TD1 0.9408±0.0077 (dans [0.8912, 0.9618]), TD3 0.9900±0.0016
+  vs [0.9737, 0.9899] → **hors plage de +0.0001 : falsifié (marginal)** (json:809-814 ;
+  plage json:78) ; D1′ +0.0498±0.0140 (dans [−0.0145, +0.0734], json:81), D3′ +0.0990±0.0163
+  (dans [+0.0501, +0.1193], json:82) — pas de verdict formel (exploratoire).
+- Spearman(z, νD) = 0.981–0.995 ; M6 raidissement = 0.80–1.08 selon bras/protocole
+  (`per_run`).
+
+**Falsifications de plages** (rapportées, pas de STOP — évaluation seule, sans
+réentraînement) : D3′ et TD3−TD1 au-dessus des plages en confirmatoire ; TD3 `heldout_nu`
+hors de +0.0001. **Attribution pré-déclarée** : on teste d'abord l'hypothèse de linéarité en ν
+(prereg md §6), avant toute autre interprétation.
+
+**Écarts au prereg** : le prereg md (`762db75`, 2026-11-23 21:53), les points d'entrée
+(`7af3bc4`), l'addendum JSON (`ad5083c`), l'évaluateur (`070a088`), l'audit (`2cbaa3e`) et
+l'export val (`66e4271`) sont commités **avant** le pilote (08:00) et la génération (08:25) ;
+trois fixes de l'évaluateur/export (`f2c0c28` dispatch `encoder_mode`, `c3c0f71` clés M6,
+`486d854` parsing des noms de runs — `git show --stat 486d854` : 1 fichier, +23/−5, aucun
+artefact touché) sont commités entre 08:41 et 09:03, **avant** l'évaluation réussie (09:10) ;
+les rapports de génération/audit et les 130 artefacts (logs, SHA-256, 120 npz de
+prédictions, résultats) sont commités **après** dans `891e2de` (2026-11-24 09:38). Le
+SHA-256 de la strate figure dans le log de génération dès 08:25 et dans l'audit (08:29),
+avant toute évaluation.
+
+---
+
 ## Bilan global du projet (5 points)
 
 1. **Données** : nu_sweep_v1 (L=2π, Nx=1024, RK4, T=2, ν∈{0.01,0.05,0.20}, 600/150/150)
