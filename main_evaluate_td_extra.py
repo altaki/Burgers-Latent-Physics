@@ -27,6 +27,7 @@ REPO = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
 import main_evaluate_td as ev  # numpy-only : spearman, m6_raidissement, run_metrics réutilisés
+from main_export_predictions_val import build_td_model_from_config  # dispatch encoder_mode (td0 vs td1/2/3)
 
 DATA_DIR = REPO / "outputs" / "data"
 MODELS_ROOT = REPO / "outputs" / "models" / "latent_dynamics_autoencoder_seq"
@@ -117,9 +118,6 @@ def predict_run_on_stratum(run_dir: Path, extra_npz: Path, device: str = "cpu") 
     ckpt_path = run_dir / "best_model.pt"
     sha_before = sha256_file(ckpt_path)
     ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
-    cfg = dict(ckpt.get("model_config") or {})
-    cfg.pop("model", None)
-    cfg.pop("loss", None)
 
     datasets_module = mt._load_datasets_module()
     ec_datasets = mt._load_experiment_c_datasets_module()
@@ -131,7 +129,7 @@ def predict_run_on_stratum(run_dir: Path, extra_npz: Path, device: str = "cpu") 
         standardizer=standardizer, nu_filter=None, return_metadata=True,
     )
     ec_models = mt._load_experiment_c_models_module()
-    model = ec_models.build_window_dynamics_autoencoder(**cfg)
+    model = build_td_model_from_config(ec_models, ckpt.get("model_config"), dt=float(ds.dt))
     model.load_state_dict(ckpt["model_state_dict"])
     pred = mt.predict_a_seq(model, ds, device=torch.device(device))
     z = pred["z"]
@@ -329,6 +327,28 @@ def smoke(smoke_dir: Path) -> int:
     rep["train_nuD_ranges"] = train_nuD_range_per_protocole(TRAIN_NPZ)
     # README:28 : max νD train (protocole heldout_nu, ν=0.01 exclu) = 1.8121
     rep["heldout_nu_max_nuD_attendu_1.8121_readme28"] = abs(rep["train_nuD_ranges"]["heldout_nu"] - 1.8121) < 1e-3
+    # (f) dispatch du modèle depuis model_config (sans torch, faux module)
+    class _FakeModels:
+        def __init__(self):
+            self.calls = []
+        def build_window_dynamics_autoencoder(self, **kw):
+            self.calls.append(("td0_builder", sorted(kw)))
+            return "m_td0"
+        def build_window_dynamics_autoencoder_td(self, encoder_mode, dt, **kw):
+            # dt en paramètre nommé, comme le vrai builder (ml_models_experiment_c.py:731)
+            self.calls.append((f"td_builder[{encoder_mode}] dt={dt}", sorted(kw)))
+            return f"m_{encoder_mode}"
+    fake = _FakeModels()
+    base_cfg = {"model": "window_dynamics_autoencoder", "loss": {"z_weight": 1.0},
+                "encoder_mode": "td1", "window_size": 25, "nx": 1024, "latent_dim": 8,
+                "conv_channels": [16, 32], "activation": "relu", "dropout": 0.0}
+    m1 = build_td_model_from_config(fake, base_cfg, dt=1e-4)
+    m2 = build_td_model_from_config(fake, {**base_cfg, "encoder_mode": "td0"}, dt=1e-4)
+    m3 = build_td_model_from_config(fake, {k: v for k, v in base_cfg.items() if k != "encoder_mode"}, dt=1e-4)
+    rep["checks"]["dispatch_td1_vers_builder_td_avec_dt"] = m1 == "m_td1" and fake.calls[0][0] == "td_builder[td1] dt=0.0001" and "dt" not in fake.calls[0][1]
+    rep["checks"]["dispatch_td0_vers_builder_classique"] = m2 == "m_td0" and fake.calls[1][0] == "td0_builder"
+    rep["checks"]["dispatch_sans_encoder_mode_default_td0"] = m3 == "m_td0"
+    rep["checks"]["cles_model_loss_retirees"] = all("model" not in kw and "loss" not in kw for _, kw in fake.calls)
     out = smoke_dir / "eval_nu002_smoke_report.json"
     out.write_text(json.dumps(rep, indent=2, default=str), encoding="utf-8")
     ok = all(v is True for k, v in rep["checks"].items() if k.endswith("_ok")) and rep["checks"].get("E1_ok")

@@ -68,6 +68,24 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
+def build_td_model_from_config(ec_models, model_config: dict, dt: float):
+    """Reconstruit le modèle TD depuis le model_config du checkpoint.
+
+    Dispatch identique à l'entraînement (ml_train_experiment_a_seq.py:1017-1048) :
+    encoder_mode == "td0" -> build_window_dynamics_autoencoder, sinon
+    build_window_dynamics_autoencoder_td(encoder_mode=..., dt=...) — `dt` n'est PAS
+    dans le model_config, il vient du dataset (train_ds.dt à l'entraînement).
+    Les clés "model"/"loss" du model_config sont ignorées (rétrocompatibilité).
+    """
+    cfg = dict(model_config or {})
+    cfg.pop("model", None)
+    cfg.pop("loss", None)
+    encoder_mode = str(cfg.pop("encoder_mode", "td0"))
+    if encoder_mode == "td0":
+        return ec_models.build_window_dynamics_autoencoder(**cfg)
+    return ec_models.build_window_dynamics_autoencoder_td(encoder_mode=encoder_mode, dt=float(dt), **cfg)
+
+
 def export_td_run_val(run_dir: Path, out_dir: Path, device: str = "cpu") -> dict:
     import torch  # import tardif : --help / py_compile fonctionnent sans torch
     import ml_train_experiment_a_seq as mt
@@ -82,9 +100,6 @@ def export_td_run_val(run_dir: Path, out_dir: Path, device: str = "cpu") -> dict
     sha_before = sha256_file(ckpt_path)
 
     ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
-    cfg = dict(ckpt.get("model_config") or {})
-    cfg.pop("model", None)
-    cfg.pop("loss", None)
 
     bundle = mt.build_a_seq_datasets(
         TRAIN_NPZ, VAL_NPZ, TEST_NPZ,
@@ -92,7 +107,7 @@ def export_td_run_val(run_dir: Path, out_dir: Path, device: str = "cpu") -> dict
         nu_filter_train=(HELDOUT_NU005 if proto == "heldout_nu005" else HELDOUT_NU),
     )
     ec_models = mt._load_experiment_c_models_module()
-    model = ec_models.build_window_dynamics_autoencoder(**cfg)
+    model = build_td_model_from_config(ec_models, ckpt.get("model_config"), dt=float(bundle["val"].dt))
     model.load_state_dict(ckpt["model_state_dict"])
 
     pred = mt.predict_a_seq(model, bundle["val"], device=torch.device(device))
