@@ -1,0 +1,62 @@
+{
+  "pilot": true,
+  "pilot_n": 20,
+  "nu": 0.02,
+  "gates": {
+    "n_trajectories": 20,
+    "dt_saved": 0.02,
+    "pass_fraction": 1.0,
+    "gate_pass_fraction": 0.95,
+    "mean_monotone_fraction": 1.0,
+    "min_monotone_fraction": 1.0,
+    "gate_monotone_frac": 0.99,
+    "gate_monotone_atol_rel": 1e-08,
+    "max_abs_u": 1.446735327376349,
+    "gate_max_abs_u": 5.0,
+    "median_dedt_rel_err": 0.005756076183879058,
+    "gate_dedt_rel_err": 0.01,
+    "checks": {
+      "all_finite": true,
+      "monotone_pass_fraction_ok": true,
+      "max_abs_u_ok": true,
+      "dedt_rel_err_ok": true
+    },
+    "gates_passed": true,
+    "diagnostics": {
+      "max_cell_peclet": 0.4438528394701525,
+      "gate_max_cell_peclet": 2.0,
+      "cell_peclet_ok": true
+    }
+  },
+  "summary": {
+    "n_trajectories": 20,
+    "n_times": 101,
+    "Nx": 1024,
+    "global_min_state": -1.446735327376349,
+    "global_max_state": 1.385537112342,
+    "mean_initial_energy": 0.7024407534449915,
+    "mean_final_energy": 0.4002864614577911,
+    "mean_dissipation": 7.539998358405805,
+    "ic_distribution": {
+      "fourier": 7,
+      "gaussian_bumps": 7,
+      "random_smooth": 6
+    },
+    "mean_energy_monotone_fraction": 1.0,
+    "mean_energy_positive_violation": 0.0,
+    "nu_distribution": {
+      "nu=0.02": 20
+    },
+    "count_nu_ic_family": {
+      "nu=0.02|fourier": 7,
+      "nu=0.02|gaussian_bumps": 7,
+      "nu=0.02|random_smooth": 6
+    },
+    "target_l2_norm_min": 0.5856068039860359,
+    "target_l2_norm_max": 1.9930568744814543,
+    "mean_energy0": 0.7024407534449915,
+    "max_abs_mass0": 6.975736996017264e-16,
+    "max_initial_cell_peclet": 0.4438528394701525,
+    "dataset_version": "nu_sweep_v1_test_extra_nu0p02"
+  }
+}

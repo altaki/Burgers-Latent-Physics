@@ -1,0 +1,827 @@
+{
+  "experiment": "TD_extra_strate_nu002",
+  "stratum_npz": "outputs\\data\\test_extra_data_nu002.npz",
+  "stratum_sha256": "6174c9d3544791d8d1ffa7a04cad5e22d23261b4e8ea9d63c2514ca085dc945f",
+  "nu": 0.02,
+  "train_nuD_ranges": {
+    "heldout_nu": 1.8121266301203223,
+    "heldout_nu005": 1.8336535526896771,
+    "train_complet": 1.8336535526896771
+  },
+  "per_run": {
+    "td0_heldout_nu005_s123": {
+      "r2_identity": -15.631854148239029,
+      "spearman": -0.1275353064683095,
+      "calibration_slope": -0.23879304211202554,
+      "rel_rmse": 5.678006265099418,
+      "n_windows": 11400,
+      "calib_a": -0.22975178406585722,
+      "calib_b": -0.0005211546130057523,
+      "r2_calibree_hors_strate": -0.14898433994207072,
+      "M6_raidissement": 2.803688186541497,
+      "checkpoint_unchanged": true
+    },
+    "td0_heldout_nu005_s2024": {
+      "r2_identity": -11.14114808120225,
+      "spearman": -0.20212798199909376,
+      "calibration_slope": -0.39919902500211635,
+      "rel_rmse": 4.851269612674045,
+      "n_windows": 11400,
+      "calib_a": -0.04880848647682658,
+      "calib_b": 0.13731966041474936,
+      "r2_calibree_hors_strate": 0.015348480937095177,
+      "M6_raidissement": 2.9857988966177245,
+      "checkpoint_unchanged": true
+    },
+    "td0_heldout_nu005_s42": {
+      "r2_identity": -13.851524333719185,
+      "spearman": -0.33381282262725076,
+      "calibration_slope": -0.9433270209456287,
+      "rel_rmse": 5.365510499416079,
+      "n_windows": 11400,
+      "calib_a": -0.13037401116453853,
+      "calib_b": 0.09748129251273853,
+      "r2_calibree_hors_strate": 0.1724099004636861,
+      "M6_raidissement": 2.193377697222989,
+      "checkpoint_unchanged": true
+    },
+    "td0_heldout_nu005_s7": {
+      "r2_identity": -26.88710576911065,
+      "spearman": 0.23878828381079903,
+      "calibration_slope": 0.9268006013868625,
+      "rel_rmse": 7.352368325332672,
+      "n_windows": 11400,
+      "calib_a": 0.07575088577055873,
+      "calib_b": 0.08786356827645105,
+      "r2_calibree_hors_strate": 0.03966912509790865,
+      "M6_raidissement": 3.3059181095513406,
+      "checkpoint_unchanged": true
+    },
+    "td0_heldout_nu005_s999": {
+      "r2_identity": -6.045157872206757,
+      "spearman": -0.08147570269397679,
+      "calibration_slope": -0.3140417812305427,
+      "rel_rmse": 3.6954803574621264,
+      "n_windows": 11400,
+      "calib_a": -0.1150598863070473,
+      "calib_b": 0.16202150857095077,
+      "r2_calibree_hors_strate": -0.007807730947116287,
+      "M6_raidissement": 2.1794010401162254,
+      "checkpoint_unchanged": true
+    },
+    "td0_heldout_nu005_zenergy_centered_s123": {
+      "r2_identity": 0.9241944397346701,
+      "spearman": 0.9828213188727145,
+      "calibration_slope": 0.8050008584474195,
+      "rel_rmse": 0.38333287327852555,
+      "n_windows": 11400,
+      "calib_a": 1.0047977816486713,
+      "calib_b": 0.002223064103446452,
+      "r2_calibree_hors_strate": 0.9269174629486283,
+      "M6_raidissement": 1.0709256240895655,
+      "checkpoint_unchanged": true
+    },
+    "td0_heldout_nu005_zenergy_centered_s2024": {
+      "r2_identity": 0.9166051713307962,
+      "spearman": 0.9768172750617539,
+      "calibration_slope": 0.8197036815320096,
+      "rel_rmse": 0.402063911934287,
+      "n_windows": 11400,
+      "calib_a": 1.007805887196799,
+      "calib_b": -0.0012282375166590745,
+      "r2_calibree_hors_strate": 0.9180805629598012,
+      "M6_raidissement": 1.0958351605229117,
+      "checkpoint_unchanged": true
+    },
+    "td0_heldout_nu005_zenergy_centered_s42": {
+      "r2_identity": 0.9245240742219684,
+      "spearman": 0.981010040149601,
+      "calibration_slope": 0.8325880836698138,
+      "rel_rmse": 0.38249851890852454,
+      "n_windows": 11400,
+      "calib_a": 1.0061529373444893,
+      "calib_b": 0.0015963042089820654,
+      "r2_calibree_hors_strate": 0.9268281410665435,
+      "M6_raidissement": 1.0286046042777954,
+      "checkpoint_unchanged": true
+    },
+    "td0_heldout_nu005_zenergy_centered_s7": {
+      "r2_identity": 0.91416175877142,
+      "spearman": 0.9777727648332254,
+      "calibration_slope": 0.8020291677321285,
+      "rel_rmse": 0.4079114901388999,
+      "n_windows": 11400,
+      "calib_a": 1.0119135179934728,
+      "calib_b": -0.003239492089585552,
+      "r2_calibree_hors_strate": 0.9162990684812771,
+      "M6_raidissement": 1.1237676597899904,
+      "checkpoint_unchanged": true
+    },
+    "td0_heldout_nu005_zenergy_centered_s999": {
+      "r2_identity": 0.932710375251183,
+      "spearman": 0.9890783155148275,
+      "calibration_slope": 0.8373092166113022,
+      "rel_rmse": 0.3611599520359523,
+      "n_windows": 11400,
+      "calib_a": 1.0209698030359475,
+      "calib_b": -9.944514534137328e-05,
+      "r2_calibree_hors_strate": 0.9376388569238763,
+      "M6_raidissement": 1.0737640139149707,
+      "checkpoint_unchanged": true
+    },
+    "td0_heldout_nu_s123": {
+      "r2_identity": -49.86588349143807,
+      "spearman": -0.45690891797770217,
+      "calibration_slope": -0.7565454068463741,
+      "rel_rmse": 9.929761777425103,
+      "n_windows": 11400,
+      "calib_a": -0.18901902165907994,
+      "calib_b": -0.03985925494554824,
+      "r2_calibree_hors_strate": 0.024415550102897088,
+      "M6_raidissement": 3.6465365900657067,
+      "checkpoint_unchanged": true
+    },
+    "td0_heldout_nu_s2024": {
+      "r2_identity": -7.5930910170978585,
+      "spearman": -0.0743925868138387,
+      "calibration_slope": -0.12973516538408603,
+      "rel_rmse": 4.081316165601342,
+      "n_windows": 11400,
+      "calib_a": -0.057474722983551836,
+      "calib_b": 0.16638694023761103,
+      "r2_calibree_hors_strate": -0.0082775510783335,
+      "M6_raidissement": 2.3643789347530966,
+      "checkpoint_unchanged": true
+    },
+    "td0_heldout_nu_s42": {
+      "r2_identity": -9.076985493270689,
+      "spearman": -0.2170056821103631,
+      "calibration_slope": -0.42155485796297854,
+      "rel_rmse": 4.4196802450241846,
+      "n_windows": 11400,
+      "calib_a": -0.23145737845241898,
+      "calib_b": 0.09051719527214847,
+      "r2_calibree_hors_strate": 0.04843752462795192,
+      "M6_raidissement": 1.5837851096929687,
+      "checkpoint_unchanged": true
+    },
+    "td0_heldout_nu_s7": {
+      "r2_identity": -13.258851160444285,
+      "spearman": 0.21470025721738345,
+      "calibration_slope": 0.5865665888110679,
+      "rel_rmse": 5.257361026381747,
+      "n_windows": 11400,
+      "calib_a": 0.017183472362572137,
+      "calib_b": 0.1533997932596161,
+      "r2_calibree_hors_strate": 0.017042517754442432,
+      "M6_raidissement": 2.2890861690855777,
+      "checkpoint_unchanged": true
+    },
+    "td0_heldout_nu_s999": {
+      "r2_identity": -4.805362878176734,
+      "spearman": 0.07416014245295148,
+      "calibration_slope": 0.15370812661424826,
+      "rel_rmse": 3.354595957172418,
+      "n_windows": 11400,
+      "calib_a": 0.2025876012998858,
+      "calib_b": 0.055525576798682134,
+      "r2_calibree_hors_strate": -0.032472927861550316,
+      "M6_raidissement": 1.8636855990042165,
+      "checkpoint_unchanged": true
+    },
+    "td0_heldout_nu_zenergy_centered_s123": {
+      "r2_identity": 0.8800881833847827,
+      "spearman": 0.9794126013221208,
+      "calibration_slope": 0.8326953634953764,
+      "rel_rmse": 0.4821215284115058,
+      "n_windows": 11400,
+      "calib_a": 1.0470557688294018,
+      "calib_b": -0.004802412432843828,
+      "r2_calibree_hors_strate": 0.8812578701435304,
+      "M6_raidissement": 0.7329172250376361,
+      "checkpoint_unchanged": true
+    },
+    "td0_heldout_nu_zenergy_centered_s2024": {
+      "r2_identity": 0.8721146098282208,
+      "spearman": 0.9774986872931752,
+      "calibration_slope": 0.8560994004008529,
+      "rel_rmse": 0.49789297641049735,
+      "n_windows": 11400,
+      "calib_a": 1.0463468293756863,
+      "calib_b": -0.003407757470589303,
+      "r2_calibree_hors_strate": 0.869048333254901,
+      "M6_raidissement": 0.7973002779308126,
+      "checkpoint_unchanged": true
+    },
+    "td0_heldout_nu_zenergy_centered_s42": {
+      "r2_identity": 0.9141084530023589,
+      "spearman": 0.9872007256774351,
+      "calibration_slope": 0.9197608355461394,
+      "rel_rmse": 0.4080381275248238,
+      "n_windows": 11400,
+      "calib_a": 1.0251630105046328,
+      "calib_b": -0.00696368222230385,
+      "r2_calibree_hors_strate": 0.9154918220883033,
+      "M6_raidissement": 0.8611768021926445,
+      "checkpoint_unchanged": true
+    },
+    "td0_heldout_nu_zenergy_centered_s7": {
+      "r2_identity": 0.8951102748235433,
+      "spearman": 0.9819740445569795,
+      "calibration_slope": 0.8690955031001435,
+      "rel_rmse": 0.45091222219636934,
+      "n_windows": 11400,
+      "calib_a": 1.0497263733309719,
+      "calib_b": -0.006467597807323613,
+      "r2_calibree_hors_strate": 0.8945807411182628,
+      "M6_raidissement": 0.8187590151621572,
+      "checkpoint_unchanged": true
+    },
+    "td0_heldout_nu_zenergy_centered_s999": {
+      "r2_identity": 0.8934958762371421,
+      "spearman": 0.9847333908933422,
+      "calibration_slope": 0.8313867223156233,
+      "rel_rmse": 0.454369054385577,
+      "n_windows": 11400,
+      "calib_a": 1.0584259197330737,
+      "calib_b": -0.0021421644522971336,
+      "r2_calibree_hors_strate": 0.8953767265571063,
+      "M6_raidissement": 0.7825148598968649,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu005_s123": {
+      "r2_identity": -45.18593818707345,
+      "spearman": -0.3161512347072193,
+      "calibration_slope": -0.997092737059564,
+      "rel_rmse": 9.461944982519512,
+      "n_windows": 11400,
+      "calib_a": -0.02912828958952689,
+      "calib_b": 0.11901122087981043,
+      "r2_calibree_hors_strate": 0.04172599415565048,
+      "M6_raidissement": 3.1312545241593996,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu005_s2024": {
+      "r2_identity": -15.366533949058205,
+      "spearman": -0.2883560569487805,
+      "calibration_slope": -0.789835794729438,
+      "rel_rmse": 5.632534899526063,
+      "n_windows": 11400,
+      "calib_a": -0.18375074209575967,
+      "calib_b": 0.06036059416645561,
+      "r2_calibree_hors_strate": 0.12447832122134028,
+      "M6_raidissement": 2.8781935380039414,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu005_s42": {
+      "r2_identity": -37.45612268552764,
+      "spearman": -0.4571758835552871,
+      "calibration_slope": -0.7743831041390248,
+      "rel_rmse": 8.633925179505061,
+      "n_windows": 11400,
+      "calib_a": -0.23612486995767154,
+      "calib_b": -0.09335469864978135,
+      "r2_calibree_hors_strate": 0.14466072897010085,
+      "M6_raidissement": 2.708764610900803,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu005_s7": {
+      "r2_identity": -40.7461270654455,
+      "spearman": -0.502414138955065,
+      "calibration_slope": -1.310542798672966,
+      "rel_rmse": 8.99567235197814,
+      "n_windows": 11400,
+      "calib_a": -0.18507387774704873,
+      "calib_b": -0.028865798256786656,
+      "r2_calibree_hors_strate": 0.2533405014006841,
+      "M6_raidissement": 2.7998480002997765,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu005_s999": {
+      "r2_identity": -4.994898938250383,
+      "spearman": -0.14856138761082438,
+      "calibration_slope": -0.24401046068215285,
+      "rel_rmse": 3.4089173090259357,
+      "n_windows": 11400,
+      "calib_a": -0.12674926318427296,
+      "calib_b": 0.13288491671947336,
+      "r2_calibree_hors_strate": 0.012997672480231981,
+      "M6_raidissement": 2.318914158756759,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu005_zenergy_centered_s123": {
+      "r2_identity": 0.9542956080428378,
+      "spearman": 0.994819869488769,
+      "calibration_slope": 0.850910226554737,
+      "rel_rmse": 0.29764905033255,
+      "n_windows": 11400,
+      "calib_a": 1.0086236889261277,
+      "calib_b": 0.0001302982575731001,
+      "r2_calibree_hors_strate": 0.9569778038964666,
+      "M6_raidissement": 1.016196550979983,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu005_zenergy_centered_s2024": {
+      "r2_identity": 0.9439236933457978,
+      "spearman": 0.9916101734764737,
+      "calibration_slope": 0.8287109253957788,
+      "rel_rmse": 0.3296971815042299,
+      "n_windows": 11400,
+      "calib_a": 1.0161836009147955,
+      "calib_b": 0.0037634727310477266,
+      "r2_calibree_hors_strate": 0.9523454338980352,
+      "M6_raidissement": 1.0399835915387954,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu005_zenergy_centered_s42": {
+      "r2_identity": 0.9521034545878843,
+      "spearman": 0.9950897908754868,
+      "calibration_slope": 0.8466307697364689,
+      "rel_rmse": 0.30470363047781446,
+      "n_windows": 11400,
+      "calib_a": 1.0160730207730528,
+      "calib_b": -0.0024063939395139898,
+      "r2_calibree_hors_strate": 0.9553963579445527,
+      "M6_raidissement": 1.0311709715678852,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu005_zenergy_centered_s7": {
+      "r2_identity": 0.9431750697242016,
+      "spearman": 0.9912856809541438,
+      "calibration_slope": 0.8285996175036693,
+      "rel_rmse": 0.33189062827141236,
+      "n_windows": 11400,
+      "calib_a": 1.0158789166690871,
+      "calib_b": 0.0019024776024891134,
+      "r2_calibree_hors_strate": 0.949805659159127,
+      "M6_raidissement": 1.0225893414604295,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu005_zenergy_centered_s999": {
+      "r2_identity": 0.9524127334524608,
+      "spearman": 0.9957352735148206,
+      "calibration_slope": 0.8415411077885034,
+      "rel_rmse": 0.30371826697313564,
+      "n_windows": 11400,
+      "calib_a": 1.0192325970838079,
+      "calib_b": 0.0003304025085123109,
+      "r2_calibree_hors_strate": 0.9587705240274169,
+      "M6_raidissement": 1.0176741355326013,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu_s123": {
+      "r2_identity": -20.73859994042721,
+      "spearman": -0.3280603605825222,
+      "calibration_slope": -0.5797397100248111,
+      "rel_rmse": 6.491444055019015,
+      "n_windows": 11400,
+      "calib_a": -0.15569958506750173,
+      "calib_b": 0.07859072760951569,
+      "r2_calibree_hors_strate": -0.011740170910512271,
+      "M6_raidissement": 3.32887929752554,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu_s2024": {
+      "r2_identity": -5.8473980523902735,
+      "spearman": 0.13673275458789183,
+      "calibration_slope": 0.2878720555848518,
+      "rel_rmse": 3.6432445253131953,
+      "n_windows": 11400,
+      "calib_a": 0.05344078645936503,
+      "calib_b": 0.1448424940252285,
+      "r2_calibree_hors_strate": 0.015049128275151369,
+      "M6_raidissement": 2.3477711382961752,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu_s42": {
+      "r2_identity": -24.166877548942075,
+      "spearman": -0.2938853938961415,
+      "calibration_slope": -0.7655299327325477,
+      "rel_rmse": 6.98457847945605,
+      "n_windows": 11400,
+      "calib_a": -0.18705513067914364,
+      "calib_b": 0.032984263867902076,
+      "r2_calibree_hors_strate": 0.12340399812908676,
+      "M6_raidissement": 2.5924144678060834,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu_s7": {
+      "r2_identity": -18.26918129553911,
+      "spearman": -0.3818624996083915,
+      "calibration_slope": -0.6595447481499919,
+      "rel_rmse": 6.111631560069787,
+      "n_windows": 11400,
+      "calib_a": -0.17037759111284867,
+      "calib_b": 0.06714900778898487,
+      "r2_calibree_hors_strate": 0.13794067525236975,
+      "M6_raidissement": 1.8119597871228794,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu_s999": {
+      "r2_identity": -1.0635140078082665,
+      "spearman": -0.306726357957888,
+      "calibration_slope": -0.2392053180277303,
+      "rel_rmse": 1.9999965391707855,
+      "n_windows": 11400,
+      "calib_a": -0.8259225683361832,
+      "calib_b": 0.35337786661717896,
+      "r2_calibree_hors_strate": -0.004573913323606016,
+      "M6_raidissement": 1.353517243410912,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu_zenergy_centered_s123": {
+      "r2_identity": 0.9293233443390232,
+      "spearman": 0.9910828463253815,
+      "calibration_slope": 0.9607229887781825,
+      "rel_rmse": 0.3701378764235883,
+      "n_windows": 11400,
+      "calib_a": 1.0186549669940728,
+      "calib_b": -0.00635198820620506,
+      "r2_calibree_hors_strate": 0.9306073355335814,
+      "M6_raidissement": 0.8902675653732587,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu_zenergy_centered_s2024": {
+      "r2_identity": 0.9383688364105058,
+      "spearman": 0.9934562157872746,
+      "calibration_slope": 0.9710883664660777,
+      "rel_rmse": 0.34564136939443696,
+      "n_windows": 11400,
+      "calib_a": 1.0179673120421169,
+      "calib_b": -0.005907466639227123,
+      "r2_calibree_hors_strate": 0.9392911186725532,
+      "M6_raidissement": 0.9586254091906505,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu_zenergy_centered_s42": {
+      "r2_identity": 0.9424258169810815,
+      "spearman": 0.9931615344133815,
+      "calibration_slope": 0.9661137126652237,
+      "rel_rmse": 0.3340714987658182,
+      "n_windows": 11400,
+      "calib_a": 1.0138997977497741,
+      "calib_b": -0.0027003275038486084,
+      "r2_calibree_hors_strate": 0.9418745738203684,
+      "M6_raidissement": 0.871737977443365,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu_zenergy_centered_s7": {
+      "r2_identity": 0.9440054736863231,
+      "spearman": 0.9934202149324035,
+      "calibration_slope": 0.9257815933833216,
+      "rel_rmse": 0.3294566825572245,
+      "n_windows": 11400,
+      "calib_a": 1.0354622926144161,
+      "calib_b": -0.0055865086413522565,
+      "r2_calibree_hors_strate": 0.9441010853771858,
+      "M6_raidissement": 0.9148733860183961,
+      "checkpoint_unchanged": true
+    },
+    "td1_heldout_nu_zenergy_centered_s999": {
+      "r2_identity": 0.9500384433393821,
+      "spearman": 0.9941018476080252,
+      "calibration_slope": 0.9368655806815035,
+      "rel_rmse": 0.3112028131068957,
+      "n_windows": 11400,
+      "calib_a": 1.0104138386727444,
+      "calib_b": -0.0019289346670539375,
+      "r2_calibree_hors_strate": 0.950346419994084,
+      "M6_raidissement": 0.9086789385897668,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu005_s123": {
+      "r2_identity": -3.40777617453855,
+      "spearman": -0.1981535092922991,
+      "calibration_slope": -0.0738154140411116,
+      "rel_rmse": 2.9230436449966937,
+      "n_windows": 11400,
+      "calib_a": -0.2687357463821829,
+      "calib_b": 0.12621699344475454,
+      "r2_calibree_hors_strate": -0.13002613028021837,
+      "M6_raidissement": 1.628922669787551,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu005_s2024": {
+      "r2_identity": -5.263428824574941,
+      "spearman": 0.06119363058794809,
+      "calibration_slope": 0.04770237290865054,
+      "rel_rmse": 3.4844288971488475,
+      "n_windows": 11400,
+      "calib_a": 0.17433242449690103,
+      "calib_b": 0.10202190723296309,
+      "r2_calibree_hors_strate": -0.15580240136439416,
+      "M6_raidissement": 1.8178997142156286,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu005_s42": {
+      "r2_identity": -1.8886530907970447,
+      "spearman": -0.1526498147332268,
+      "calibration_slope": -0.07365156205159183,
+      "rel_rmse": 2.366318657244899,
+      "n_windows": 11400,
+      "calib_a": -0.2698346893560254,
+      "calib_b": 0.2047649618274937,
+      "r2_calibree_hors_strate": -0.0863636563208856,
+      "M6_raidissement": 1.355810479049153,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu005_s7": {
+      "r2_identity": -3.820422622588956,
+      "spearman": -0.05451557129564904,
+      "calibration_slope": -0.11243901131860544,
+      "rel_rmse": 3.056807508548784,
+      "n_windows": 11400,
+      "calib_a": 0.03167132790657526,
+      "calib_b": 0.12763502268587806,
+      "r2_calibree_hors_strate": -0.01565907724180593,
+      "M6_raidissement": 1.4628715112701578,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu005_s999": {
+      "r2_identity": -11.650865092941185,
+      "spearman": -0.15111343555553744,
+      "calibration_slope": -0.3259394580605928,
+      "rel_rmse": 4.952057123113724,
+      "n_windows": 11400,
+      "calib_a": -0.10035488122245738,
+      "calib_b": 0.14472926219889531,
+      "r2_calibree_hors_strate": -0.05194729547393573,
+      "M6_raidissement": 2.8638071617714327,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu005_zenergy_centered_s123": {
+      "r2_identity": 0.9956442303372952,
+      "spearman": 0.9937309133278784,
+      "calibration_slope": 0.9836308643876658,
+      "rel_rmse": 0.0918878280763743,
+      "n_windows": 11400,
+      "calib_a": 1.0079606979579165,
+      "calib_b": 0.0007309503116454981,
+      "r2_calibree_hors_strate": 0.9962162874740035,
+      "M6_raidissement": 0.9943694419765712,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu005_zenergy_centered_s2024": {
+      "r2_identity": 0.9844158701331156,
+      "spearman": 0.9933959758749618,
+      "calibration_slope": 0.9355381355487887,
+      "rel_rmse": 0.17380681963382197,
+      "n_windows": 11400,
+      "calib_a": 1.0056666183203247,
+      "calib_b": 0.004104300424820192,
+      "r2_calibree_hors_strate": 0.9877232338674248,
+      "M6_raidissement": 0.9576869237700851,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu005_zenergy_centered_s42": {
+      "r2_identity": 0.9938536857176818,
+      "spearman": 0.9937944462958384,
+      "calibration_slope": 0.9690426853236234,
+      "rel_rmse": 0.10915230599238128,
+      "n_windows": 11400,
+      "calib_a": 1.007893273926544,
+      "calib_b": 0.0033468314463103344,
+      "r2_calibree_hors_strate": 0.9958266703504066,
+      "M6_raidissement": 0.9739825744383807,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu005_zenergy_centered_s7": {
+      "r2_identity": 0.994791946221565,
+      "spearman": 0.9950323326247916,
+      "calibration_slope": 1.0053915363169066,
+      "rel_rmse": 0.1004762142985485,
+      "n_windows": 11400,
+      "calib_a": 0.9644701065493729,
+      "calib_b": 0.0006365247672999167,
+      "r2_calibree_hors_strate": 0.9935282425100969,
+      "M6_raidissement": 1.0370133372755126,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu005_zenergy_centered_s999": {
+      "r2_identity": 0.9940537604046957,
+      "spearman": 0.993570334634386,
+      "calibration_slope": 0.9830970031655591,
+      "rel_rmse": 0.10736104640189989,
+      "n_windows": 11400,
+      "calib_a": 0.9922755168868436,
+      "calib_b": 0.0023363935860987706,
+      "r2_calibree_hors_strate": 0.9941761003433965,
+      "M6_raidissement": 0.9805288041563313,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu_s123": {
+      "r2_identity": -4.648803750346541,
+      "spearman": 0.059682194166731505,
+      "calibration_slope": 0.07266121020549504,
+      "rel_rmse": 3.3090534093238997,
+      "n_windows": 11400,
+      "calib_a": -0.02798817356440356,
+      "calib_b": 0.15863139315629965,
+      "r2_calibree_hors_strate": -0.007350051035899474,
+      "M6_raidissement": 2.249673722345073,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu_s2024": {
+      "r2_identity": -5.613857177420504,
+      "spearman": -0.25839859989696157,
+      "calibration_slope": -0.48445666997195713,
+      "rel_rmse": 3.5805763570252824,
+      "n_windows": 11400,
+      "calib_a": 0.018450717391556383,
+      "calib_b": 0.15900962985535325,
+      "r2_calibree_hors_strate": -0.019408407051507703,
+      "M6_raidissement": 3.7609110139186424,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu_s42": {
+      "r2_identity": -6.807519678095614,
+      "spearman": -0.1797230743689307,
+      "calibration_slope": -0.6438940048110907,
+      "rel_rmse": 3.890290899333672,
+      "n_windows": 11400,
+      "calib_a": -0.058351403180172415,
+      "calib_b": 0.17042357741425465,
+      "r2_calibree_hors_strate": 0.05608802272260682,
+      "M6_raidissement": 2.867319455204689,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu_s7": {
+      "r2_identity": -10.95380474123815,
+      "spearman": -0.08756510102045038,
+      "calibration_slope": -0.5305175470537562,
+      "rel_rmse": 4.813695473816414,
+      "n_windows": 11400,
+      "calib_a": -0.0021709295507196633,
+      "calib_b": 0.162548535012328,
+      "r2_calibree_hors_strate": 0.0021996121915671685,
+      "M6_raidissement": 2.603614112845289,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu_s999": {
+      "r2_identity": -27.527874500384726,
+      "spearman": -0.016425013454472483,
+      "calibration_slope": 0.09279992006303833,
+      "rel_rmse": 7.436357174330454,
+      "n_windows": 11400,
+      "calib_a": 0.02420409180770144,
+      "calib_b": 0.1499202896917116,
+      "r2_calibree_hors_strate": -0.010028667590378237,
+      "M6_raidissement": 3.7376041260129336,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu_zenergy_centered_s123": {
+      "r2_identity": 0.9919937870971198,
+      "spearman": 0.9945582022855308,
+      "calibration_slope": 0.9849998012197243,
+      "rel_rmse": 0.12457735358695467,
+      "n_windows": 11400,
+      "calib_a": 1.0150388935975925,
+      "calib_b": -0.0013435035541580426,
+      "r2_calibree_hors_strate": 0.9916532167521348,
+      "M6_raidissement": 0.9512416969112519,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu_zenergy_centered_s2024": {
+      "r2_identity": 0.9881579929691285,
+      "spearman": 0.9928899993356332,
+      "calibration_slope": 0.9905328044126465,
+      "rel_rmse": 0.15150891593454938,
+      "n_windows": 11400,
+      "calib_a": 1.0105841430184508,
+      "calib_b": 0.0017041321031674968,
+      "r2_calibree_hors_strate": 0.9872522477387358,
+      "M6_raidissement": 0.9960628142883751,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu_zenergy_centered_s42": {
+      "r2_identity": 0.9888501876448924,
+      "spearman": 0.9946385268718302,
+      "calibration_slope": 0.9677967913306811,
+      "rel_rmse": 0.1470142093963817,
+      "n_windows": 11400,
+      "calib_a": 1.0291573194158345,
+      "calib_b": 0.0007307126447702643,
+      "r2_calibree_hors_strate": 0.9885873019489027,
+      "M6_raidissement": 0.9797928806027315,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu_zenergy_centered_s7": {
+      "r2_identity": 0.9899635507913007,
+      "spearman": 0.9957931874099198,
+      "calibration_slope": 0.9769018130428122,
+      "rel_rmse": 0.1394811691493821,
+      "n_windows": 11400,
+      "calib_a": 1.0080226487219301,
+      "calib_b": -0.003932737557977249,
+      "r2_calibree_hors_strate": 0.9909044812328992,
+      "M6_raidissement": 0.9596130081671911,
+      "checkpoint_unchanged": true
+    },
+    "td3_heldout_nu_zenergy_centered_s999": {
+      "r2_identity": 0.9911813548476659,
+      "spearman": 0.9946301370068896,
+      "calibration_slope": 1.0094449173949567,
+      "rel_rmse": 0.13074541482119342,
+      "n_windows": 11400,
+      "calib_a": 1.0070912594979016,
+      "calib_b": -1.5029695393384885e-05,
+      "r2_calibree_hors_strate": 0.9903738679797649,
+      "M6_raidissement": 0.9501775372211538,
+      "checkpoint_unchanged": true
+    }
+  },
+  "comparisons": {
+    "D1prime|heldout_nu005": {
+      "statut": "CONFIRMATOIRE",
+      "mean_r2_id": 0.026742947968628906,
+      "sd_r2_id": 0.004093684185392221,
+      "mean_r2_cal": 0.029506337309094376,
+      "sd_r2_cal": 0.005243275701807088,
+      "L": 0.022840152510604884,
+      "U": 0.034505118765466,
+      "verdict": "E1_POSITIF_BORNE",
+      "delta_R": 0.05
+    },
+    "D3prime|heldout_nu005": {
+      "statut": "EXPLORATOIRE_INJECTION",
+      "mean_r2_id": 0.07011273470086313,
+      "sd_r2_id": 0.006986033809216352,
+      "mean_r2_cal": 0.06834128843304037,
+      "sd_r2_cal": 0.007439294763183845,
+      "L": 0.061248888409545635,
+      "U": 0.07677300935456105,
+      "verdict": "E2_POSITIF_NON_BORNE",
+      "delta_R": 0.05
+    },
+    "TD3moinsTD1|heldout_nu005": {
+      "statut": "DESCRIPTIF",
+      "mean_r2_id": 0.04336978673223422,
+      "sd_r2_id": 0.004636588320091626,
+      "mean_r2_cal": 0.03883495112394599,
+      "sd_r2_cal": 0.0035464584632602003,
+      "L": 0.03545386422137717,
+      "U": 0.047790170674149625,
+      "verdict": "E1_POSITIF_BORNE",
+      "delta_R": 0.05
+    }
+  },
+  "plages": {
+    "td0|heldout_nu005": {
+      "moy_observee": 0.9224391638620075,
+      "plage": [
+        0.9369,
+        0.952
+      ],
+      "dans_plage": false
+    },
+    "td1|heldout_nu005": {
+      "moy_observee": 0.9491821118306365,
+      "plage": [
+        0.9687,
+        0.975
+      ],
+      "dans_plage": false
+    },
+    "td3|heldout_nu005": {
+      "moy_observee": 0.9925518985628706,
+      "plage": [
+        0.9908,
+        0.9969
+      ],
+      "dans_plage": true
+    },
+    "td0|heldout_nu": {
+      "moy_observee": 0.8909834794552095,
+      "plage": [
+        0.8642,
+        0.93
+      ],
+      "dans_plage": true
+    },
+    "td1|heldout_nu": {
+      "moy_observee": 0.9408323829512633,
+      "plage": [
+        0.8912,
+        0.9618
+      ],
+      "dans_plage": true
+    },
+    "td3|heldout_nu": {
+      "moy_observee": 0.9900293746700214,
+      "plage": [
+        0.9737,
+        0.9899
+      ],
+      "dans_plage": false
+    }
+  },
+  "stratification": {
+    "heldout_nu": {
+      "nuD_train_max": 1.8121266301203223
+    },
+    "heldout_nu005": {
+      "nuD_train_max": 1.8336535526896771
+    }
+  },
+  "n_runs_evalues": 60
+}

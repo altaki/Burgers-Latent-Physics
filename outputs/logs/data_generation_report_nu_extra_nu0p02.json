@@ -1,0 +1,69 @@
+{
+  "smoke": false,
+  "nu": 0.02,
+  "n": 150,
+  "seed_base": 100000,
+  "n_existing_seeds": 900,
+  "overlap": false,
+  "out": "C:\\Users\\baltaki\\Burgers_Latent_Physics\\Burgers Latent Physcis\\outputs\\data\\test_extra_data_nu002.npz",
+  "sha256": "6174c9d3544791d8d1ffa7a04cad5e22d23261b4e8ea9d63c2514ca085dc945f",
+  "dataset_version": "nu_sweep_v1_test_extra_nu0p02",
+  "protocol": "nu_sweep_v1_test_extra_nu0p02: nu=0.02 unique, 1 seule valeur; target_l2_norm log-uniform[0.5, 2.0]; zero_mean=True toutes familles; Nx=1024, dt=0.0001, save_every=200, rk4, L=6.283185307179586, T=2.0, 101 snapshots; seeds disjoints du bloc 100000+ (prereg manuscript/prereg_nu002_strate_test.md)",
+  "gates": {
+    "n_trajectories": 150,
+    "dt_saved": 0.02,
+    "pass_fraction": 1.0,
+    "gate_pass_fraction": 0.95,
+    "mean_monotone_fraction": 1.0,
+    "min_monotone_fraction": 1.0,
+    "gate_monotone_frac": 0.99,
+    "gate_monotone_atol_rel": 1e-08,
+    "max_abs_u": 1.8008831884532424,
+    "gate_max_abs_u": 5.0,
+    "median_dedt_rel_err": 0.003980236925834386,
+    "gate_dedt_rel_err": 0.01,
+    "checks": {
+      "all_finite": true,
+      "monotone_pass_fraction_ok": true,
+      "max_abs_u_ok": true,
+      "dedt_rel_err_ok": true
+    },
+    "gates_passed": true,
+    "diagnostics": {
+      "max_cell_peclet": 0.552504042462702,
+      "gate_max_cell_peclet": 2.0,
+      "cell_peclet_ok": true
+    }
+  },
+  "summary": {
+    "n_trajectories": 150,
+    "n_times": 101,
+    "Nx": 1024,
+    "global_min_state": -1.7844753636933526,
+    "global_max_state": 1.8008831884532424,
+    "mean_initial_energy": 0.6802222625833243,
+    "mean_final_energy": 0.38712584863905003,
+    "mean_dissipation": 7.31290996482677,
+    "ic_distribution": {
+      "fourier": 50,
+      "gaussian_bumps": 50,
+      "random_smooth": 50
+    },
+    "mean_energy_monotone_fraction": 1.0,
+    "mean_energy_positive_violation": 0.0,
+    "nu_distribution": {
+      "nu=0.02": 150
+    },
+    "count_nu_ic_family": {
+      "nu=0.02|fourier": 50,
+      "nu=0.02|gaussian_bumps": 50,
+      "nu=0.02|random_smooth": 50
+    },
+    "target_l2_norm_min": 0.5100589378238551,
+    "target_l2_norm_max": 1.9976330005208691,
+    "mean_energy0": 0.6802222625833243,
+    "max_abs_mass0": 1.3951473992034527e-15,
+    "max_initial_cell_peclet": 0.552504042462702,
+    "dataset_version": "nu_sweep_v1_test_extra_nu0p02"
+  }
+}

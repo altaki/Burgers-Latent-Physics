@@ -1,0 +1,63 @@
+{
+  "npz": "outputs\\data\\test_extra_data_nu002.npz",
+  "sha256": "6174c9d3544791d8d1ffa7a04cad5e22d23261b4e8ea9d63c2514ca085dc945f",
+  "checks": {
+    "keys_exact": true,
+    "states_shape": true,
+    "all_finite": true,
+    "nu_unique_valeur": true,
+    "dataset_version": true,
+    "protocol_mentionne_nu_et_seeds": true,
+    "gates_passed": true,
+    "cell_peclet_diagnostic_ok": true,
+    "ic_names": true,
+    "ic_round_robin": true,
+    "target_l2_dans_plage": true,
+    "energy0_egal_moitie_target_carre": true,
+    "mass0_seuil": true,
+    "energy_recompute": true,
+    "u0_egal_states_t0": true,
+    "times_triees_dt_saved": true,
+    "grille_x_dx": true,
+    "seeds_uniques_dans_npz": true,
+    "seeds_disjoints_des_900_existants": true
+  },
+  "diagnostics": {
+    "ic_counts": {
+      "fourier": 50,
+      "gaussian_bumps": 50,
+      "random_smooth": 50
+    },
+    "mass0_max_abs": 1.3951473992034527e-15,
+    "energy_recompute_max_abs_diff": 0.0,
+    "n_seeds_existants": 900,
+    "overlap_seeds": 0
+  },
+  "gates": {
+    "n_trajectories": 150,
+    "dt_saved": 0.02,
+    "pass_fraction": 1.0,
+    "gate_pass_fraction": 0.95,
+    "mean_monotone_fraction": 1.0,
+    "min_monotone_fraction": 1.0,
+    "gate_monotone_frac": 0.99,
+    "gate_monotone_atol_rel": 1e-08,
+    "max_abs_u": 1.8008831884532424,
+    "gate_max_abs_u": 5.0,
+    "median_dedt_rel_err": 0.003980236925834386,
+    "gate_dedt_rel_err": 0.01,
+    "checks": {
+      "all_finite": true,
+      "monotone_pass_fraction_ok": true,
+      "max_abs_u_ok": true,
+      "dedt_rel_err_ok": true
+    },
+    "gates_passed": true,
+    "diagnostics": {
+      "max_cell_peclet": 0.552504042462702,
+      "gate_max_cell_peclet": 2.0,
+      "cell_peclet_ok": true
+    }
+  },
+  "go": true
+}
