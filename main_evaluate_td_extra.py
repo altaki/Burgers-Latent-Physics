@@ -159,6 +159,10 @@ def evaluate(stratum_npz: Path, prereg_json: Path, out: Path, preds_dir: Path, v
     t95 = float(prereg["decision_rule"]["t_0.95_4"])
 
     train_ranges = train_nuD_range_per_protocole(TRAIN_NPZ)
+    # νD_vrai pleine trajectoire (101 pas) pour M6, comme main_evaluate_td.py:173-174
+    extra_full = np.load(stratum_npz, allow_pickle=True)
+    nuD_traj_extra = {int(i): np.asarray(extra_full["dissipation_physical"][i], float)
+                      for i in range(int(extra_full["states"].shape[0]))}
 
     per_run = {}
     found = set()
@@ -187,18 +191,19 @@ def evaluate(stratum_npz: Path, prereg_json: Path, out: Path, preds_dir: Path, v
         a, b = fit_affine_calibration(dv["z"], dv["nu_dissipation_t"])
         m["calib_a"], m["calib_b"] = a, b
         m["r2_calibree_hors_strate"] = r2_identity(a * z + b, y)
-        # M6 (définition prereg A1 5623042, via ev.m6_raidissement sur npz-like dict)
-        nuD_traj = {}
-        for ti in np.unique(meta["trajectory_index"]):
-            sel = meta["trajectory_index"] == ti
-            nuD_traj[int(ti)] = np.asarray(meta["nu_dissipation_t"])[sel]
-        d_npz = {"nu": np.full(len(z), nu), "z": z, "D": np.asarray(meta["dissipation_t"], float),
-                 "h": pred["h"], "z_target_mode": np.array(run_dir.name.split("_z")[-1] if "_z" in run_dir.name else "none")}
-        try:
-            m["M6_raidissement"] = ev.m6_raidissement(d_npz, np.ones(len(z), bool), nu, nuD_traj)
-        except Exception:
-            m["M6_raidissement"] = float("nan")
+        # M6 (prereg A1 5623042) : mêmes clés top-level que run_metrics (main_evaluate_td.py:82-103)
+        d_npz = {
+            "nu": np.asarray(meta["nu"], float),
+            "z": z,
+            "nu_dissipation_t": np.asarray(meta["nu_dissipation_t"], float),
+            "D": np.asarray(meta["dissipation_t"], float),
+            "h": pred["h"],
+            "trajectory_index": np.asarray(meta["trajectory_index"]),
+            "time_index_t": np.asarray(meta["time_index_t"]),
+        }
+        m["M6_raidissement"] = ev.m6_raidissement(d_npz, np.isclose(d_npz["nu"], nu), nu, nuD_traj_extra)
         m["checkpoint_unchanged"] = pred["checkpoint_sha256_before"] == pred["checkpoint_sha256_after"]
+        nan_guard(m, run_name)  # AVANT tout export : un NaN ne laisse jamais d'export partiel
         # export additif des prédictions extra (jamais dans le run dir)
         preds_dir.mkdir(parents=True, exist_ok=True)
         ppath = preds_dir / f"{run_name}_predictions_extra_nu002.npz"
@@ -209,11 +214,10 @@ def evaluate(stratum_npz: Path, prereg_json: Path, out: Path, preds_dir: Path, v
             ppath, z=z, h=pred["h"], meta=meta, u=pred.get("u"), dx=float(extra_raw_dx(stratum_npz)),
             split="test_extra", protocol=str(np.load(stratum_npz, allow_pickle=True)["protocol"]),
             seed=int(run_dir.name.rsplit("_s", 1)[1]), window_size=WINDOW_SIZE,
-            z_target_mode=str(d_npz["z_target_mode"]), run_name=run_name,
+            z_target_mode=zmode, run_name=run_name,
             extra={"source": np.array("td_extra_eval"), "stratum": np.array(str(stratum_npz)),
                    "checkpoint_sha256": np.array(pred["checkpoint_sha256_before"])},
         )
-        nan_guard(m, run_name)
         per_run[run_name] = m
         print(f"[eval] {run_name}: r2_id={m['r2_identity']:.4f} r2_cal={m['r2_calibree_hors_strate']:.4f} ckpt_ok={m['checkpoint_unchanged']}")
 
@@ -349,6 +353,17 @@ def smoke(smoke_dir: Path) -> int:
     rep["checks"]["dispatch_td0_vers_builder_classique"] = m2 == "m_td0" and fake.calls[1][0] == "td0_builder"
     rep["checks"]["dispatch_sans_encoder_mode_default_td0"] = m3 == "m_td0"
     rep["checks"]["cles_model_loss_retirees"] = all("model" not in kw and "loss" not in kw for _, kw in fake.calls)
+    # (g) M6 sur données synthétiques : z = 2*nuD + 0.01 -> raidissement attendu = 2.0
+    t101 = np.arange(101)
+    nuD_traj_s = {0: np.exp(-((t101 - 40) ** 2) / 200.0), 1: np.exp(-((t101 - 60) ** 2) / 300.0)}
+    tidx = np.tile(np.arange(24, 100), 2)
+    traj = np.repeat([0, 1], 76)
+    nu_win = np.concatenate([nuD_traj_s[0][24:100], nuD_traj_s[1][24:100]])
+    d_s = {"nu": np.full(152, 0.02), "z": 2.0 * nu_win + 0.01, "nu_dissipation_t": nu_win,
+           "trajectory_index": traj, "time_index_t": tidx}
+    m6 = ev.m6_raidissement(d_s, np.ones(152, bool), 0.02, nuD_traj_s)
+    rep["checks"]["m6_synth_finie"] = bool(np.isfinite(m6))
+    rep["checks"]["m6_synth_vaut_2"] = bool(abs(m6 - 2.0) < 1e-9)
     out = smoke_dir / "eval_nu002_smoke_report.json"
     out.write_text(json.dumps(rep, indent=2, default=str), encoding="utf-8")
     ok = all(v is True for k, v in rep["checks"].items() if k.endswith("_ok")) and rep["checks"].get("E1_ok")
