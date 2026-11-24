@@ -1,10 +1,10 @@
 # Plan de manuscrit v2 — Burgers-Latent-Physics (VALIDÉ)
 
 **Statut** : plan de rédaction uniquement. Aucun run, aucune génération de données,
-aucun artefact existant modifié. HEAD attendu `4c2c402`, tag `v1.0-preservation`.
-Le brouillon de pré-enregistrement « nouvelle strate test »
-(`manuscript/prereg_nouvelle_strate_test_BROUILLON.md`) reste **non commité** et
-inactif sans feu vert explicite.
+aucun artefact existant modifié. HEAD `4c743f0` (Step 10 ν=0.02 commité), tag
+`v1.0-preservation` posé localement, `origin/travail-td` = `891e2de`.
+Le prereg de la strate ν=0.02 est désormais commité et exécuté :
+`manuscript/prereg_nu002_strate_test.{md,json}` (`762db75`, `ad5083c`) — voir §3.4.
 
 ---
 
@@ -113,12 +113,31 @@ La portée est strictement Burgers 1D (voir Limites) : aucun « generalization �
   bilan des prédictions prereg §8 (README.md:1152-1162 ; TD3 falsifié de 0.013,
   README.md:1159) ; borne sup D1 +0.054 présentée comme information
   (json `:1498`) ; **tableau de sensibilité 3 variantes du R²**
-  (README.md:1245-1256). Puissance selon convention 3.
+  (README.md:1245-1256). Puissance selon convention 3. **D2 (ν=0.01) reste
+  INDÉTERMINÉ en contexte** (Step 9) : la campagne ν=0.02 ne le rouvre pas (td2 exclu).
+- **3.4 Strate test inédite ν=0.02 — RÉSULTAT CENTRAL CONFIRMATOIRE.** Prereg
+  `762db75` + addendum `ad5083c` ; évaluation seule des 60 checkpoints existants
+  (td2 exclu), aucun réentraînement (README.md:1273-1337 ; `outputs/logs/nu002_eval_results.json`).
+  Protocole CONFIRMATOIRE `heldout_nu005` (ν=0.02 = interpolation) : **D1′ (TD1−TD0)
+  = +0.0267 (sd 0.0041), L=+0.0228, U=+0.0345 → E1_POSITIF_BORNE** (json:734-743 ;
+  attendu E1, prereg json:68 ; plage [+0.0189,+0.0359] dedans) : **le gap TD1>TD0 se
+  transfère à une viscosité jamais vue**. D3′ (injection) = +0.0701, L=+0.0612,
+  U=+0.0768 → **E2_POSITIF_NON_BORNE** (json:745-754) — **exploratoire/injection**,
+  hors plage [+0.0397,+0.0591] (falsification rapportée, attribuée d'abord à la
+  linéarité en ν, pré-déclaré). TD3−TD1 = +0.0434 → E1 (json:756-765). Exploratoire
+  `heldout_nu` (extrapolation) : D1′ +0.0498±0.0140, D3′ +0.0990±0.0163, TD3
+  0.9900±0.0016 **falsifié (marginal)**, hors plage de +0.0001 (json:809-814).
+  TD0/TD1 `heldout_nu005` sous leur plage = cohérent avec le biais haut déclaré de
+  l'interpolation (prereg json:61), pas une falsification. Intégrité : 60/60 runs,
+  checkpoints inchangés (SHA avant/après), 0 NaN, conditions == prereg JSON
+  (json:826). Strate SHA-256 `6174c9d3…dc945f` (json:4), audit GO 20/20.
 
 ### 4. Discussion
 - Ce qui est démontré / seulement suggéré / non démontré (matrice explicite) :
   la préservation sous injection est démontrée ; la « découverte » sans injection
-  est réfutée (dans ce système) ; la cause de l'écart au plafond reste ouverte
+  est réfutée (dans ce système) ; **le transfert du gap TD1>TD0 à ν=0.02 inédit est
+  démontré (D1′ = E1, confirmatoire, prereg)** ; D3′ reste de l'injection
+  (exploratoire, E2) ; la cause de l'écart au plafond reste ouverte
   (README.md:1266-1268).
 - « Pourquoi apprendre si une formule fermée fait mieux ? » : Burgers comme banc
   d'essai contrôlé où la vérité est connue (identité exacte), pas comme cas d'usage.
@@ -132,8 +151,12 @@ La portée est strictement Burgers 1D (voir Limites) : aucun « generalization �
   legacy Nx=128 (README.md:983-998) ; non-déterminisme historique s42
   (rec 0.1775 vs 0.1663, même commit `212db0f`, README.md:870-876) vs déterminisme
   bit à bit de la campagne TD (`outputs/logs/td_corrected/td_determinism_check_postfix.log`,
-  README.md:1335-1338) ; run 964 min (README.md:1217-1218) ; D1 confondu
-  (pooling, README.md:1212-1215).
+  README.md:1396-1404) ; run 964 min (README.md:1217-1218) ; D1 confondu
+  (pooling, README.md:1212-1215) ; strate ν=0.02 à usage unique (prereg `762db75`,
+  une seule génération, SHA-256 `6174c9d3…dc945f`) avec falsifications de plages
+  rapportées (D3′/TD3−TD1 au-dessus en confirmatoire, TD3 `heldout_nu` hors de
+  +0.0001 — README.md:1273-1337) ; écarts de gouvernance ν=0.02 (rapports/artefacts
+  commités après l'évaluation dans `891e2de`, code/prereg avant — README.md:1330-1337).
 
 ### 6. Supplementary (gouvernance, hors texte principal)
 - Preregs commités (`outputs/prereg/*`), amendment 1 + erratum, note d'archivage
@@ -196,14 +219,14 @@ La portée est strictement Burgers 1D (voir Limites) : aucun « generalization �
 | Sensibilité 3 variantes R² : Pearson² in-sample D1 +0.0503 [+0.0366,+0.0641] REPR de justesse | `README.md:1245-1256` (ligne 1249) |
 | Erratum en-tête BROUILLON dans 182c8fc | `README.md:1265-1267` ; `outputs/prereg/td_encoder_prereg_amendment_1_erratum.md:1-13` |
 | Open questions TD (pourquoi TD3 < 0.99, etc.) | `README.md:1266-1271` |
-| Bilan global 5 points | `README.md:1273-1291` |
-| TD2' non preregistré ; règle « mean ≥ δ_R » plafonne P(REPR) à 0.5 ; MDE80 0.062 (n=5) / 0.058 (n=10) ; budget 9–10 h / 18–20 h CPU | `README.md:1293-1310` (1302-1308) |
-| SHA-256 des 6 npz | `README.md:1320-1328` |
-| Environnement lock (torch 2.12.0+cpu, numpy 2.4.1) ; déterminisme postfix | `README.md:1331-1339` ; `outputs/logs/td_corrected/td_determinism_check_postfix.log` |
-| Encodage UTF-16 des logs Tee-Object | `README.md:1341-1343` |
-| Commandes canoniques PowerShell | `README.md:1345-1360` |
-| Mapping résultat→artefact/commit | `README.md:1362-1376` |
-| Note clé `r2_identity` absente des artefacts existants | `README.md:1378-1382` |
+| Bilan global 5 points | `README.md:1338-1356` |
+| TD2' non preregistré ; règle « mean ≥ δ_R » plafonne P(REPR) à 0.5 ; MDE80 0.062 (n=5) / 0.058 (n=10) ; budget 9–10 h / 18–20 h CPU | `README.md:1358-1375` (1367-1373) |
+| SHA-256 des 6 npz | `README.md:1385-1393` |
+| Environnement lock (torch 2.12.0+cpu, numpy 2.4.1) ; déterminisme postfix | `README.md:1396-1404` ; `outputs/logs/td_corrected/td_determinism_check_postfix.log` |
+| Encodage UTF-16 des logs Tee-Object | `README.md:1406-1408` |
+| Commandes canoniques PowerShell | `README.md:1410-1425` |
+| Mapping résultat→artefact/commit | `README.md:1427-1441` |
+| Note clé `r2_identity` absente des artefacts existants | `README.md:1443-1447` |
 | SHA-256 des 300 artefacts TD | `outputs/logs/td_corrected/td_artifacts_sha256.txt` (300 lignes) |
 | Prereg TD md : commit seul, question, bras, protocoles, hyper, anti-sélection, métriques (R² « affine » ligne 68), règle §6, C6', §8 (TD0 [0.78,0.90] l.115 ; TD3 ≥0.99 l.118-119) | `outputs/prereg/td_encoder_prereg.md:3,8-13,18-27,40-43,44-53,54-58,60-66,68,78-104,106-112,114-122` |
 | Prereg TD json : decision_rule (D1 td2−td0, delta_R=0.05, unilateral_95, t_ddl4=2.1318, n=5) ; verdicts 3 états ; D2/D3 ; puissance | `outputs/prereg/td_encoder_prereg.json` `/decision_rule`, `/verdicts`, `/comparaisons_secondaires`, `/puissance` |
@@ -213,3 +236,9 @@ La portée est strictement Burgers 1D (voir Limites) : aucun « generalization �
 | Code : R² identité + label erroné ; nommage évaluateur ; val non exportée | `main_evaluate_td.py:88-89,107-110,177-183` ; `ml_train_experiment_a_seq.py:593-595,1182-1183` ; `main_evaluate_b1.py:86-87,94` |
 | Bug filtre heldout_nu ; config ; module protocoles | `main_train_td.py:48` ; `config.py:417` ; `td_protocols.py` |
 | Gates audit Step 3 (monotonie, max|u|≤5, dedt ≤1e-2, Péclet maille ≤2.0, CFL) | `README.md:310-335` ; `config.py:366-380` ; `outputs/logs/data_generation_report_nu_sweep_{train,val,test}.json`, `nu_sweep_pilot_report.json` |
+| Step 10 — strate test inédite ν=0.02 (design, intégrité, verdicts, plages, écarts de gouvernance) | `README.md:1273-1337` |
+| Verdicts ν=0.02 @heldout_nu005 : D1′ +0.0267 L=+0.0228 U=+0.0345 E1 ; D3′ +0.0701 L=+0.0612 U=+0.0768 E2 ; TD3−TD1 +0.0434 E1 | `outputs/logs/nu002_eval_results.json:734-765` ; attendus E1/E2 : `manuscript/prereg_nu002_strate_test.json:68-69` |
+| Plages prereg ν=0.02 + biais interpolation déclaré + observés (TD3 heldout_nu hors de +0.0001 = falsifié marginal) | prereg json:61-83 ; `nu002_eval_results.json:768-826` |
+| Strate ν=0.02 : SHA-256 6174c9d3…dc945f, audit GO 20/20, 150 seeds disjoints des 900, non commitée (115 Mo) | `nu002_eval_results.json:4` ; `outputs/logs/audit_nu_extra_nu002.json` ; `outputs/logs/nu002_artifacts_sha256.txt` (126 lignes) ; commit artefacts `891e2de` (130 fichiers) |
+| Écarts de gouvernance ν=0.02 : prereg/code avant génération, fixes avant éval, artefacts après | `README.md:1330-1337` ; `git log` `762db75`→`891e2de` ; `git show --stat 486d854` (+23/−5, 1 fichier) |
+| Prereg ν=0.02 md + addendum JSON (règle E1–E4, co-primaires, 60 conditions, plages §6) | `manuscript/prereg_nu002_strate_test.md` ; `manuscript/prereg_nu002_strate_test.json:29,54-58,96` ; commits `762db75`, `ad5083c` |
